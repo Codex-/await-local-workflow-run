@@ -7,6 +7,7 @@
     "sourceType": "module",
     "project": "./tsconfig.test.json"
   },
+  "ignorePatterns": ["jest.config.ts"],
   "env": {
     "node": true,
     "es6": true,
