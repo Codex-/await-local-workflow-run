@@ -1,11 +1,24 @@
-name: 'Your name here'
-description: 'Provide a description here'
-author: 'Your name or organization here'
+name: Await Local Workflow Run
+description: Wait until the completion of a local repository workflow run before another step.
+author: Alex Miller
+branding:
+  icon: activity
+  color: gray-dark
 inputs:
-  milliseconds: # change this
+  token:
+    description: GitHub Personal Access Token for making API requests.
     required: true
-    description: 'input description here'
-    default: 'default value if applicable'
+  workflow_name:
+    required: true
+    description: The workflow that you wish to await completion of.
+  check_name:
+    description: A specific check within the workflow to wait for. Await all checks if this is not specified.
+  timeout_mins:
+    description: Time until giving up on the workflow checks completion.
+    default: 15
+  poll_interval_ms:
+    description: Frequency to poll the workflow run for a status.
+    default: 5000
 runs:
-  using: 'node16'
-  main: 'dist/index.js'
+  using: node16
+  main: dist/index.js
