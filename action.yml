@@ -10,7 +10,7 @@ inputs:
     required: true
   workflow_name:
     required: true
-    description: The workflow that you wish to await completion of.
+    description: The filename of the workflow that you wish to await completion of.
   check_name:
     description: A specific check within the workflow to wait for. Await all checks if this is not specified.
   timeout_mins:
