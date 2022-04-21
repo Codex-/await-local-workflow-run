@@ -2,6 +2,7 @@ import * as core from "@actions/core";
 import * as github from "@actions/github";
 import type { GitHub } from "@actions/github/lib/utils";
 import { ActionConfig, getConfig } from "./action";
+import { getBranchName, getOffsetRange } from "./utils";
 
 type Octokit = InstanceType<typeof GitHub>;
 
@@ -61,6 +62,100 @@ export async function getWorkflowId(workflowFilename: string): Promise<number> {
     if (error instanceof Error) {
       core.error(
         `getWorkflowId: An unexpected error has occurred: ${error.message}`
+      );
+      error.stack && core.debug(error.stack);
+    }
+    throw error;
+  }
+}
+
+export enum WorkflowRunStatus {
+  Queued = "queued",
+  InProgress = "in_progress",
+  Completed = "completed",
+}
+
+export interface WorkflowRun {
+  id: number;
+  attempt: number;
+  status?: WorkflowRunStatus;
+}
+
+/**
+ * @param tryUseBranch limit search for the run ID to the branch being used.
+ */
+export async function getWorkflowRuns(
+  workflowId: number,
+  tryUseBranch = false
+): Promise<WorkflowRun[]> {
+  try {
+    const branchName = tryUseBranch
+      ? getBranchName(github.context.ref)
+      : undefined;
+
+    // https://docs.github.com/en/rest/reference/actions#list-workflow-runs
+    const response = await octokit.rest.actions.listWorkflowRuns({
+      owner: github.context.repo.owner,
+      repo: github.context.repo.repo,
+      workflow_id: workflowId,
+      exclude_pull_requests: true,
+      ...(branchName
+        ? {
+            branch: branchName,
+            per_page: 25,
+          }
+        : {
+            created: getOffsetRange(1),
+            per_page: 50,
+          }),
+    });
+
+    if (response.status !== 200) {
+      throw new Error(
+        `Failed to get Workflow runs, expected 200 but received ${response.status}`
+      );
+    }
+
+    const runs: WorkflowRun[] = response.data.workflow_runs
+      .filter((workflowRun) => workflowRun.head_sha === github.context.sha)
+      .map((workflowRun) => ({
+        id: workflowRun.id,
+        attempt: workflowRun.run_attempt || 0,
+        status: (workflowRun.status as WorkflowRunStatus) || undefined,
+      }));
+
+    // Ordering should be newest to oldest by date and time, but
+    // I could not find any promises to this ordering.
+    if (runs.length > 1) {
+      // Sort by highest attempt to lowest attempt,
+      // we're only interest in the most recent attempt.
+      runs.sort((a, b) => {
+        if (a.attempt > b.attempt) {
+          return -1;
+        }
+        if (a.attempt < b.attempt) {
+          return 1;
+        }
+
+        return 0;
+      });
+    }
+
+    core.debug(
+      "Fetched Workflow Runs:\n" +
+        `  Repository: ${github.context.repo.owner}/${github.context.repo.repo}\n` +
+        `  Workflow ID: ${workflowId}\n` +
+        `  Triggering SHA: ${github.context.sha}` +
+        `  Runs Fetched: [${runs.map(
+          (run) => `${run.id} (Attempt ${run.attempt})`
+        )}]`
+    );
+
+    return runs;
+  } catch (error) {
+    if (error instanceof Error) {
+      core.error(
+        `getWorkflowRunIds: An unexpected error has occurred: ${error.message}`
       );
       error.stack && core.debug(error.stack);
     }
