@@ -78,6 +78,7 @@ export enum WorkflowRunStatus {
 export interface WorkflowRun {
   id: number;
   attempt: number;
+  checkSuiteId?: number;
   status?: WorkflowRunStatus;
 }
 
@@ -121,6 +122,7 @@ export async function getWorkflowRuns(
       .map((workflowRun) => ({
         id: workflowRun.id,
         attempt: workflowRun.run_attempt || 0,
+        checkSuiteId: workflowRun.check_suite_id,
         status: (workflowRun.status as WorkflowRunStatus) || undefined,
       }));
 

@@ -140,42 +140,49 @@ describe("API", () => {
     const mockWorkflowRunsApiData = [
       {
         id: 0,
+        check_suite_id: 0,
         head_sha: "0",
         run_attempt: 1,
         status: WorkflowRunStatus.Completed,
       },
       {
         id: 1,
+        check_suite_id: 0,
         head_sha: mockSha,
         run_attempt: 0,
         status: WorkflowRunStatus.Completed,
       },
       {
         id: 2,
+        check_suite_id: 0,
         head_sha: "0",
         run_attempt: 2,
         status: WorkflowRunStatus.Completed,
       },
       {
         id: 3,
+        check_suite_id: 0,
         head_sha: "0",
         run_attempt: 3,
         status: WorkflowRunStatus.Completed,
       },
       {
         id: 4,
+        check_suite_id: 0,
         head_sha: mockSha,
         run_attempt: 1,
         status: WorkflowRunStatus.Completed,
       },
       {
         id: 9,
+        check_suite_id: 0,
         head_sha: mockSha,
         run_attempt: 3,
         status: WorkflowRunStatus.Queued,
       },
       {
         id: 5,
+        check_suite_id: 0,
         head_sha: "0",
         run_attempt: 4,
         status: WorkflowRunStatus.Completed,
@@ -188,12 +195,14 @@ describe("API", () => {
       },
       {
         id: 7,
+        check_suite_id: 0,
         head_sha: mockSha,
         run_attempt: 2,
         status: WorkflowRunStatus.InProgress,
       },
       {
         id: 8,
+        check_suite_id: 0,
         head_sha: "0",
         run_attempt: 6,
         status: WorkflowRunStatus.Completed,
@@ -269,6 +278,7 @@ describe("API", () => {
       runAttempts.forEach((attempt, i) => {
         const workflowRun = workflowRuns[i];
         expect(workflowRun.attempt).toStrictEqual(attempt.run_attempt);
+        expect(workflowRun.checkSuiteId).toStrictEqual(attempt.check_suite_id);
         expect(workflowRun.id).toStrictEqual(attempt.id);
         expect(workflowRun.status).toStrictEqual(attempt.status);
       });
@@ -278,6 +288,7 @@ describe("API", () => {
       const workflowRun = (await getWorkflowRuns(0))[0];
 
       expect(typeof workflowRun.attempt).toStrictEqual("number");
+      expect(typeof workflowRun.checkSuiteId).toStrictEqual("number");
       expect(typeof workflowRun.id).toStrictEqual("number");
       expect(typeof workflowRun.status).toStrictEqual("string");
     });
