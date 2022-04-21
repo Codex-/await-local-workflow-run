@@ -160,6 +160,12 @@ describe("API", () => {
         status: WorkflowRunStatus.Completed,
       },
       {
+        id: 9,
+        head_sha: mockSha,
+        run_attempt: 3,
+        status: WorkflowRunStatus.Queued,
+      },
+      {
         id: 5,
         head_sha: "0",
         run_attempt: 4,
@@ -182,12 +188,6 @@ describe("API", () => {
         head_sha: "0",
         run_attempt: 6,
         status: WorkflowRunStatus.Completed,
-      },
-      {
-        id: 9,
-        head_sha: mockSha,
-        run_attempt: 3,
-        status: WorkflowRunStatus.Queued,
       },
     ];
     const mockData = {
