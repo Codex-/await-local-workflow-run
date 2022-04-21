@@ -1,4 +1,5 @@
-import { getBranchName } from "./utils";
+import { DateTime } from "luxon";
+import { getBranchName, getOffsetRange } from "./utils";
 
 describe("utils", () => {
   describe("getBranchNameFromRef", () => {
@@ -34,6 +35,25 @@ describe("utils", () => {
       const branch = getBranchName("refs/tags/");
 
       expect(branch).toBeUndefined();
+    });
+  });
+
+  describe("getOffsetRange", () => {
+    it("should return a valid date range", () => {
+      const expectedStartDate = DateTime.now()
+        .toUTC()
+        .minus({ days: 1 })
+        .toFormat("yyyy-LL-dd");
+      const expectedStartRange = `${expectedStartDate}..*`;
+      const range = getOffsetRange(1);
+
+      expect(range).toStrictEqual(expectedStartRange);
+    });
+
+    it("should throw if you give an invalid day offset", () => {
+      expect(() => getOffsetRange(0)).toThrow(
+        "daysBefore must be greater than 1, received: 0"
+      );
     });
   });
 });

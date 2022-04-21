@@ -1,4 +1,5 @@
 import * as core from "@actions/core";
+import { DateTime } from "luxon";
 
 function getBranchNameFromRef(ref: string): string | undefined {
   const refItems = ref.split(/\/?refs\/heads\//);
@@ -32,4 +33,27 @@ export function getBranchName(ref: string): string | undefined {
   }
 
   return branchName;
+}
+
+/**
+ * Specify how many days prior to specify the date range query.
+ *
+ * Used in the GitHub API to satisfy the `created` parameter.
+ *
+ * @see https://docs.github.com/en/search-github/getting-started-with-searching-on-github/understanding-the-search-syntax#query-for-dates GitHub date query documentation
+ * @param daysBefore positive number > 1
+ * @returns a range that conforms to the GitHub date range query requirements.
+ */
+export function getOffsetRange(daysBefore: number): string {
+  if (daysBefore < 1) {
+    throw new Error(
+      `daysBefore must be greater than 1, received: ${daysBefore}`
+    );
+  }
+  const startDate = DateTime.now()
+    .toUTC()
+    .minus({ days: daysBefore })
+    .toFormat("yyyy-LL-dd");
+
+  return `${startDate}..*`;
 }
