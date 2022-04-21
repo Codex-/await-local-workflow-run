@@ -1,6 +1,12 @@
 import * as core from "@actions/core";
 import * as github from "@actions/github";
-import { getWorkflowId, getWorkflowRuns, init, WorkflowRunStatus } from "./api";
+import {
+  getWorkflowId,
+  getWorkflowRuns,
+  getWorkflowRunState,
+  init,
+  WorkflowRunStatus,
+} from "./api";
 
 interface MockResponse {
   data: any;
@@ -10,6 +16,9 @@ interface MockResponse {
 const mockOctokit = {
   rest: {
     actions: {
+      getWorkflowRun: async (_req?: any): Promise<MockResponse> => {
+        throw new Error("Should be mocked");
+      },
       listRepoWorkflows: async (_req?: any): Promise<MockResponse> => {
         throw new Error("Should be mocked");
       },
@@ -195,17 +204,6 @@ describe("API", () => {
       workflow_runs: mockWorkflowRunsApiData,
     };
 
-    // const workflowIdCfg = {
-    //   token: "secret",
-    //   workflowName: "workflow_name",
-    //   workflowInputs: {},
-    //   workflowTimeoutSeconds: 60,
-    // };
-
-    // beforeEach(() => {
-    //   init(workflowIdCfg);
-    // });
-
     let listWorkflowRunsSpy: jest.SpyInstance<
       Promise<MockResponse>,
       [_req?: any]
@@ -359,6 +357,39 @@ describe("API", () => {
       const requestObj = listWorkflowRunsSpy.mock.calls[0][0];
 
       expect(requestObj.branch).toBeUndefined();
+    });
+  });
+
+  describe("getWorkflowRunState", () => {
+    it("should return the workflow run state for a given run ID", async () => {
+      const mockData = {
+        status: "completed",
+        conclusion: "cancelled",
+      };
+      jest.spyOn(mockOctokit.rest.actions, "getWorkflowRun").mockReturnValue(
+        Promise.resolve({
+          data: mockData,
+          status: 200,
+        })
+      );
+
+      const state = await getWorkflowRunState(123456);
+      expect(state.conclusion).toStrictEqual(mockData.conclusion);
+      expect(state.status).toStrictEqual(mockData.status);
+    });
+
+    it("should throw if a non-200 status is returned", async () => {
+      const errorStatus = 401;
+      jest.spyOn(mockOctokit.rest.actions, "getWorkflowRun").mockReturnValue(
+        Promise.resolve({
+          data: undefined,
+          status: errorStatus,
+        })
+      );
+
+      await expect(getWorkflowRunState(0)).rejects.toThrow(
+        `Failed to get Workflow Run state, expected 200 but received ${errorStatus}`
+      );
     });
   });
 });

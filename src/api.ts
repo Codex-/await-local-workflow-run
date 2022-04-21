@@ -162,3 +162,58 @@ export async function getWorkflowRuns(
     throw error;
   }
 }
+
+export enum WorkflowRunConclusion {
+  Success = "success",
+  Failure = "failure",
+  Neutral = "neutral",
+  Cancelled = "cancelled",
+  Skipped = "skipped",
+  TimedOut = "timed_out",
+  ActionRequired = "action_required",
+}
+
+export interface WorkflowRunState {
+  status: WorkflowRunStatus | null;
+  conclusion: WorkflowRunConclusion | null;
+}
+
+export async function getWorkflowRunState(
+  runId: number
+): Promise<WorkflowRunState> {
+  try {
+    // https://docs.github.com/en/rest/reference/actions#get-a-workflow-run
+    const response = await octokit.rest.actions.getWorkflowRun({
+      owner: github.context.repo.owner,
+      repo: github.context.repo.repo,
+      run_id: runId,
+    });
+
+    if (response.status !== 200) {
+      throw new Error(
+        `Failed to get Workflow Run state, expected 200 but received ${response.status}`
+      );
+    }
+
+    core.debug(
+      `Fetched Run:\n` +
+        `  Repository: ${github.context.repo.owner}/${github.context.repo.repo}\n` +
+        `  Run ID: ${runId}\n` +
+        `  Status: ${response.data.status}\n` +
+        `  Conclusion: ${response.data.conclusion}`
+    );
+
+    return {
+      status: response.data.status as WorkflowRunStatus | null,
+      conclusion: response.data.conclusion as WorkflowRunConclusion | null,
+    };
+  } catch (error) {
+    if (error instanceof Error) {
+      core.error(
+        `getWorkflowRunState: An unexpected error has occurred: ${error.message}`
+      );
+      error.stack && core.debug(error.stack);
+    }
+    throw error;
+  }
+}
