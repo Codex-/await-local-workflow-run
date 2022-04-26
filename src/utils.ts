@@ -61,3 +61,10 @@ export function getOffsetRange(daysBefore: number): string {
 export function sleep(ms: number): Promise<void> {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));
 }
+
+/**
+ * @param seconds standard unix time
+ */
+export function unixTimeToDateTime(seconds: number): DateTime {
+  return DateTime.fromMillis(seconds * 1000);
+}

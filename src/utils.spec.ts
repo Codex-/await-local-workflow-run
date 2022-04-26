@@ -1,5 +1,10 @@
 import { DateTime } from "luxon";
-import { getBranchName, getOffsetRange } from "./utils";
+import {
+  getBranchName,
+  getOffsetRange,
+  sleep,
+  unixTimeToDateTime,
+} from "./utils";
 
 describe("utils", () => {
   describe("getBranchNameFromRef", () => {
@@ -54,6 +59,25 @@ describe("utils", () => {
       expect(() => getOffsetRange(0)).toThrow(
         "daysBefore must be greater than 1, received: 0"
       );
+    });
+  });
+
+  describe("sleep", () => {
+    it("should sleep for a given time", async () => {
+      const awaitTime = 2000;
+      const start = Date.now();
+
+      await sleep(awaitTime);
+      expect(Date.now() - start).toBeGreaterThanOrEqual(awaitTime);
+    });
+  });
+
+  describe("unixTimeToDateTime", () => {
+    it("should return a DateTime instance for a given Unix time", () => {
+      const dateTime = unixTimeToDateTime(Date.now());
+
+      expect(dateTime).toBeInstanceOf(DateTime);
+      expect(dateTime.isValid).toBeTruthy();
     });
   });
 });
