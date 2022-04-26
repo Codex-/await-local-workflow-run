@@ -4,7 +4,9 @@ import {
   getWorkflowId,
   getWorkflowRuns,
   getWorkflowRunState,
+  getWorkflowRunStatus,
   init,
+  WorkflowRunConclusion,
   WorkflowRunStatus,
 } from "./api";
 
@@ -374,8 +376,8 @@ describe("API", () => {
   describe("getWorkflowRunState", () => {
     it("should return the workflow run state for a given run ID", async () => {
       const mockData = {
-        status: "completed",
-        conclusion: "cancelled",
+        status: WorkflowRunStatus.Completed,
+        conclusion: WorkflowRunConclusion.Cancelled,
       };
       jest.spyOn(mockOctokit.rest.actions, "getWorkflowRun").mockReturnValue(
         Promise.resolve({
@@ -401,6 +403,51 @@ describe("API", () => {
       await expect(getWorkflowRunState(0)).rejects.toThrow(
         `Failed to get Workflow Run state, expected 200 but received ${errorStatus}`
       );
+    });
+  });
+
+  describe("getWorkflowRunStatus", () => {
+    it("should return the conclusion when completed", async () => {
+      const mockData = {
+        status: WorkflowRunStatus.Completed,
+        conclusion: WorkflowRunConclusion.Cancelled,
+      };
+      jest.spyOn(mockOctokit.rest.actions, "getWorkflowRun").mockReturnValue(
+        Promise.resolve({
+          data: mockData,
+          status: 200,
+        })
+      );
+
+      const runStatus = await getWorkflowRunStatus(0);
+
+      expect(runStatus.completed).toBeTruthy();
+      if (runStatus.completed) {
+        expect(runStatus.conclusion).toStrictEqual(
+          WorkflowRunConclusion.Cancelled
+        );
+      } else {
+        throw new Error("should be completed");
+      }
+    });
+
+    it("should return with completed set to false when not completed", async () => {
+      const mockData = {
+        status: WorkflowRunStatus.Queued,
+      };
+      jest.spyOn(mockOctokit.rest.actions, "getWorkflowRun").mockReturnValue(
+        Promise.resolve({
+          data: mockData,
+          status: 200,
+        })
+      );
+
+      const runStatus = await getWorkflowRunStatus(0);
+
+      expect(runStatus.completed).toBeFalsy();
+      if (runStatus.completed) {
+        throw new Error("should be not be completed");
+      }
     });
   });
 });

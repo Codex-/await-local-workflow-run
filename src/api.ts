@@ -219,3 +219,48 @@ export async function getWorkflowRunState(
     throw error;
   }
 }
+
+type WorkflowCompleted = {
+  completed: true;
+  conclusion?: WorkflowRunConclusion;
+};
+
+type WorkflowIncomplete = {
+  completed: false;
+};
+
+export type WorkflowResult = WorkflowCompleted | WorkflowIncomplete;
+
+export async function getWorkflowRunStatus(
+  runId: number
+): Promise<WorkflowResult> {
+  const { status, conclusion } = await getWorkflowRunState(runId);
+
+  if (status === WorkflowRunStatus.Completed) {
+    switch (conclusion) {
+      case WorkflowRunConclusion.Success:
+        break;
+      case WorkflowRunConclusion.ActionRequired:
+      case WorkflowRunConclusion.Cancelled:
+      case WorkflowRunConclusion.Failure:
+      case WorkflowRunConclusion.Neutral:
+      case WorkflowRunConclusion.Skipped:
+      case WorkflowRunConclusion.TimedOut:
+        core.error(`Run has failed with conclusion: ${conclusion}`);
+        core.setFailed(conclusion);
+        break;
+      default:
+        core.setFailed(`Unknown conclusion: ${conclusion}`);
+        break;
+    }
+
+    return {
+      completed: true,
+      conclusion: conclusion || undefined,
+    };
+  }
+
+  return {
+    completed: false,
+  };
+}
