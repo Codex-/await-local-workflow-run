@@ -66,6 +66,8 @@ async function run(): Promise<void> {
       }
 
       core.debug(`Run has not concluded, attempt ${attemptNo}...`);
+
+      await sleep(config.pollIntervalMs);
     }
   } catch (error) {
     if (error instanceof Error) {

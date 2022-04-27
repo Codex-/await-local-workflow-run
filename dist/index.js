@@ -11099,7 +11099,7 @@ var require_utils5 = __commonJS({
     }
     exports2.sleep = sleep;
     function getElapsedTime(start, end) {
-      const duration = luxon_1.Duration.fromMillis(start - end).shiftTo("hours", "minutes", "seconds");
+      const duration = luxon_1.Duration.fromMillis(end - start).shiftTo("hours", "minutes", "seconds");
       return duration.toHuman();
     }
     exports2.getElapsedTime = getElapsedTime;
@@ -11143,7 +11143,7 @@ var require_api = __commonJS({
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.getWorkflowRunStatus = exports2.getWorkflowRunState = exports2.WorkflowRunConclusion = exports2.getWorkflowRuns = exports2.WorkflowRunStatus = exports2.getWorkflowRunId = exports2.getWorkflowId = exports2.init = void 0;
+    exports2.getWorkflowRunStatus = exports2.getWorkflowRunState = exports2.WorkflowRunConclusion = exports2.getWorkflowRuns = exports2.WorkflowRunStatus = exports2.resetGetWorkflowRunIdCfg = exports2.getWorkflowRunId = exports2.getWorkflowId = exports2.init = void 0;
     var core2 = __importStar2(require_core());
     var github = __importStar2(require_github());
     var action_12 = require_action();
@@ -11207,6 +11207,10 @@ var require_api = __commonJS({
       return workflowRun.id;
     }
     exports2.getWorkflowRunId = getWorkflowRunId;
+    function resetGetWorkflowRunIdCfg() {
+      attemptWithBranch = false;
+    }
+    exports2.resetGetWorkflowRunIdCfg = resetGetWorkflowRunIdCfg;
     var WorkflowRunStatus;
     (function(WorkflowRunStatus2) {
       WorkflowRunStatus2["Queued"] = "queued";
@@ -11410,6 +11414,7 @@ async function run() {
         core.debug("Workflow Run ID has not been discovered yet...");
       }
       core.debug(`Run has not concluded, attempt ${attemptNo}...`);
+      await (0, utils_1.sleep)(config.pollIntervalMs);
     }
   } catch (error) {
     if (error instanceof Error) {
