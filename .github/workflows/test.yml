@@ -30,6 +30,7 @@ jobs:
           token: ${{ github.token }}
           workflow: sleep.yml
           timeout_mins: 5
+          poll_interval_ms: 10000 # 10 seconds
   codecov: # Send only a single coverage report per run
     needs: [build, test]
     timeout-minutes: 15
