@@ -20,13 +20,16 @@ jobs:
       - name: style
         if: ${{ always() }}
         run: npm run format:check
-  test: # make sure the action works on a clean machine without building
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: ./
+      - name: Await a workflow
+        uses: ./
         with:
-          milliseconds: 1000
+          token: ${{ github.token }}
+          workflow: sleep.yml
+          timeout_mins: 5
   codecov: # Send only a single coverage report per run
     needs: [build, test]
     timeout-minutes: 15

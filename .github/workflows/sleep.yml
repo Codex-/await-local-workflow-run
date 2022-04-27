@@ -1,0 +1,13 @@
+name: sleep
+on:
+  push:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Sleep for 1 minute
+        run: sleep 60
+      - name: Sleep for 3 minutes
+        run: sleep 180
