@@ -2,6 +2,7 @@ import * as core from "@actions/core";
 import * as github from "@actions/github";
 import {
   getWorkflowId,
+  getWorkflowRunId,
   getWorkflowRuns,
   getWorkflowRunState,
   getWorkflowRunStatus,
@@ -134,6 +135,101 @@ describe("API", () => {
 
       await expect(getWorkflowId(workflowName)).rejects.toThrow(
         `Failed to get Workflow ID for '${workflowName}', available workflows: []`
+      );
+    });
+  });
+
+  describe("getWorkflowRunId", () => {
+    afterEach(() => {
+      jest.resetAllMocks();
+    });
+
+    it("should return a run ID", async () => {
+      const mockWorkflowRunsApiData = [
+        {
+          id: 123456,
+          check_suite_id: 654321,
+          head_sha: "1234567890123456789012345678901234567890",
+          run_attempt: 1,
+          status: WorkflowRunStatus.InProgress,
+        },
+      ];
+      jest.spyOn(mockOctokit.rest.actions, "listWorkflowRuns").mockReturnValue(
+        Promise.resolve({
+          data: {
+            total_count: mockWorkflowRunsApiData.length,
+            workflow_runs: mockWorkflowRunsApiData,
+          },
+          status: 200,
+        })
+      );
+      const runID = await getWorkflowRunId(0);
+
+      expect(runID).toStrictEqual(123456);
+    });
+
+    it("should return undefined if it cannot find an ID", async () => {
+      const mockWorkflowRunsApiData = [
+        {
+          id: 123456,
+          check_suite_id: 654321,
+          head_sha: "0", // different sha
+          run_attempt: 1,
+          status: WorkflowRunStatus.InProgress,
+        },
+      ];
+      jest.spyOn(mockOctokit.rest.actions, "listWorkflowRuns").mockReturnValue(
+        Promise.resolve({
+          data: {
+            total_count: mockWorkflowRunsApiData.length,
+            workflow_runs: mockWorkflowRunsApiData,
+          },
+          status: 200,
+        })
+      );
+      const runID = await getWorkflowRunId(0);
+
+      expect(runID).toBeUndefined();
+    });
+
+    it("should change to use the branch strategy if no runs are returned for a given ID", async () => {
+      const mockWorkflowRunsApiData = [
+        {
+          id: 123456,
+          check_suite_id: 654321,
+          head_sha: "1234567890123456789012345678901234567890",
+          run_attempt: 1,
+          status: WorkflowRunStatus.InProgress,
+        },
+      ];
+      const listWorkflowRunsSpy = jest
+        .spyOn(mockOctokit.rest.actions, "listWorkflowRuns")
+        .mockReturnValueOnce(
+          Promise.resolve({
+            data: {
+              total_count: 0,
+              workflow_runs: [],
+            },
+            status: 200,
+          })
+        )
+        .mockReturnValueOnce(
+          Promise.resolve({
+            data: {
+              total_count: mockWorkflowRunsApiData.length,
+              workflow_runs: mockWorkflowRunsApiData,
+            },
+            status: 200,
+          })
+        );
+
+      expect(await getWorkflowRunId(0)).toBeUndefined();
+      expect(Object.keys(listWorkflowRunsSpy.mock.calls[0][0])).not.toContain(
+        "branch"
+      );
+      expect(await getWorkflowRunId(0)).toStrictEqual(123456);
+      expect(Object.keys(listWorkflowRunsSpy.mock.calls[1][0])).toContain(
+        "branch"
       );
     });
   });

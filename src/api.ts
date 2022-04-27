@@ -69,6 +69,29 @@ export async function getWorkflowId(workflowFilename: string): Promise<number> {
   }
 }
 
+let attemptWithBranch = false;
+export async function getWorkflowRunId(
+  workflowId: number
+): Promise<number | undefined> {
+  const workflowRuns = await getWorkflowRuns(workflowId, attemptWithBranch);
+  if (workflowRuns.length === 0) {
+    attemptWithBranch = !attemptWithBranch;
+    return;
+  }
+  const workflowRun = workflowRuns[0];
+
+  core.debug(
+    "Workflow Run ID Found:\n" +
+      `  Workflow ID: ${workflowId}\n` +
+      `  Run ID: ${workflowRun.id}\n` +
+      `  Run Attempt: ${workflowRun.attempt}\n` +
+      `  Run Check Suite ID: ${workflowRun.checkSuiteId || "null"}\n` +
+      `  Run Status: ${workflowRun.status || "null"}`
+  );
+
+  return workflowRun.id;
+}
+
 export enum WorkflowRunStatus {
   Queued = "queued",
   InProgress = "in_progress",
@@ -147,7 +170,7 @@ export async function getWorkflowRuns(
       "Fetched Workflow Runs:\n" +
         `  Repository: ${github.context.repo.owner}/${github.context.repo.repo}\n` +
         `  Workflow ID: ${workflowId}\n` +
-        `  Triggering SHA: ${github.context.sha}` +
+        `  Triggering SHA: ${github.context.sha}\n` +
         `  Runs Fetched: [${runs.map(
           (run) => `${run.id} (Attempt ${run.attempt})`
         )}]`
