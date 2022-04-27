@@ -65,7 +65,7 @@ async function run(): Promise<void> {
         core.debug("Workflow Run ID has not been discovered yet...");
       }
 
-      core.debug(`Run has not concluded, attempt ${attemptNo}...`);
+      core.debug(`Run has not concluded, attempt ${attemptNo}...\n`);
 
       await sleep(config.pollIntervalMs);
     }
