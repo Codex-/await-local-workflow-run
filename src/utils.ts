@@ -63,7 +63,7 @@ export function sleep(ms: number): Promise<void> {
 }
 
 export function getElapsedTime(start: number, end: number): string {
-  const duration = Duration.fromMillis(start - end).shiftTo(
+  const duration = Duration.fromMillis(end - start).shiftTo(
     "hours",
     "minutes",
     "seconds"
