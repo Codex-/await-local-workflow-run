@@ -1,5 +1,5 @@
 import * as core from "@actions/core";
-import { DateTime } from "luxon";
+import { DateTime, Duration } from "luxon";
 
 function getBranchNameFromRef(ref: string): string | undefined {
   const refItems = ref.split(/\/?refs\/heads\//);
@@ -62,9 +62,12 @@ export function sleep(ms: number): Promise<void> {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));
 }
 
-/**
- * @param seconds standard unix time
- */
-export function unixTimeToDateTime(seconds: number): DateTime {
-  return DateTime.fromMillis(seconds * 1000);
+export function getElapsedTime(start: number, end: number): string {
+  const duration = Duration.fromMillis(start - end).shiftTo(
+    "hours",
+    "minutes",
+    "seconds"
+  );
+
+  return duration.toHuman();
 }

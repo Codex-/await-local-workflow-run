@@ -1,10 +1,5 @@
 import { DateTime } from "luxon";
-import {
-  getBranchName,
-  getOffsetRange,
-  sleep,
-  unixTimeToDateTime,
-} from "./utils";
+import { getBranchName, getElapsedTime, getOffsetRange, sleep } from "./utils";
 
 describe("utils", () => {
   describe("getBranchNameFromRef", () => {
@@ -72,12 +67,26 @@ describe("utils", () => {
     });
   });
 
-  describe("unixTimeToDateTime", () => {
-    it("should return a DateTime instance for a given Unix time", () => {
-      const dateTime = unixTimeToDateTime(Date.now());
+  describe("getElapsedTime", () => {
+    it("should return the difference between two unix times in human readable text", () => {
+      const dt = DateTime.now();
+      const timeDifference = {
+        hours: 4,
+        minutes: 3,
+        seconds: 2,
+        milliseconds: 1,
+      };
+      const start = dt.minus(timeDifference).toMillis();
+      const end = dt.toMillis();
 
-      expect(dateTime).toBeInstanceOf(DateTime);
-      expect(dateTime.isValid).toBeTruthy();
+      const elapsedTime = getElapsedTime(start, end);
+
+      expect(elapsedTime).toStrictEqual(
+        `${timeDifference.hours} hours, ${timeDifference.minutes} minutes, ${(
+          timeDifference.seconds +
+          timeDifference.milliseconds / 1000
+        ).toFixed(3)} seconds`
+      );
     });
   });
 });
