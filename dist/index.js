@@ -11413,7 +11413,8 @@ async function run() {
       } else {
         core.debug("Workflow Run ID has not been discovered yet...");
       }
-      core.debug(`Run has not concluded, attempt ${attemptNo}...`);
+      core.debug(`Run has not concluded, attempt ${attemptNo}...
+`);
       await (0, utils_1.sleep)(config.pollIntervalMs);
     }
   } catch (error) {
