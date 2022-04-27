@@ -7,6 +7,7 @@ import {
   getWorkflowRunState,
   getWorkflowRunStatus,
   init,
+  resetGetWorkflowRunIdCfg,
   WorkflowRunConclusion,
   WorkflowRunStatus,
 } from "./api";
@@ -140,8 +141,8 @@ describe("API", () => {
   });
 
   describe("getWorkflowRunId", () => {
-    afterEach(() => {
-      jest.resetAllMocks();
+    beforeEach(() => {
+      resetGetWorkflowRunIdCfg();
     });
 
     it("should return a run ID", async () => {

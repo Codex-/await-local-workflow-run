@@ -92,6 +92,10 @@ export async function getWorkflowRunId(
   return workflowRun.id;
 }
 
+export function resetGetWorkflowRunIdCfg() {
+  attemptWithBranch = false;
+}
+
 export enum WorkflowRunStatus {
   Queued = "queued",
   InProgress = "in_progress",
