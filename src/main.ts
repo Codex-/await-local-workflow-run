@@ -46,9 +46,9 @@ async function run(): Promise<void> {
         if (workflowRunStatus.completed) {
           const conclusion = workflowRunStatus.conclusion;
           const completionMsg =
-            "Workflow Run Completed:" +
-            `  Run ID: ${workflowRunId}` +
-            `  Elapsed Time: ${getElapsedTime(startTime, Date.now())}` +
+            "Workflow Run Completed:\n" +
+            `  Run ID: ${workflowRunId}\n` +
+            `  Elapsed Time: ${getElapsedTime(startTime, Date.now())}\n` +
             `  Conclusion: ${conclusion}`;
 
           if (conclusion !== WorkflowRunConclusion.Success) {

@@ -11401,7 +11401,10 @@ async function run() {
         const workflowRunStatus = await (0, api_1.getWorkflowRunStatus)(workflowRunId);
         if (workflowRunStatus.completed) {
           const conclusion = workflowRunStatus.conclusion;
-          const completionMsg = `Workflow Run Completed:  Run ID: ${workflowRunId}  Elapsed Time: ${(0, utils_1.getElapsedTime)(startTime, Date.now())}  Conclusion: ${conclusion}`;
+          const completionMsg = `Workflow Run Completed:
+  Run ID: ${workflowRunId}
+  Elapsed Time: ${(0, utils_1.getElapsedTime)(startTime, Date.now())}
+  Conclusion: ${conclusion}`;
           if (conclusion !== api_1.WorkflowRunConclusion.Success) {
             core.error(completionMsg);
             core.setFailed(`Workflow ${config.workflow} (${workflowId}) has not completed successfully: ${conclusion}.`);
