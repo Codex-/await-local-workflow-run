@@ -9,7 +9,7 @@ describe("Action", () => {
     beforeEach(() => {
       mockEnvConfig = {
         token: "secret",
-        workflowName: "test workflow",
+        workflow: "test workflow",
         checkName: "test check",
         timeout_mins: "15",
         poll_interval_ms: "5000",
@@ -19,8 +19,8 @@ describe("Action", () => {
         switch (input) {
           case "token":
             return mockEnvConfig.token;
-          case "workflow_name":
-            return mockEnvConfig.workflowName;
+          case "workflow":
+            return mockEnvConfig.workflow;
           case "check_name":
             return mockEnvConfig.checkName;
           case "timeout_mins":
@@ -42,7 +42,7 @@ describe("Action", () => {
 
       // Assert that the numbers / types have been properly loaded.
       expect(config.token).toStrictEqual("secret");
-      expect(config.workflowName).toStrictEqual("test workflow");
+      expect(config.workflow).toStrictEqual("test workflow");
       expect(config.checkName).toStrictEqual("test check");
       expect(config.timeoutMins).toStrictEqual(15);
       expect(config.pollIntervalMs).toStrictEqual(5000);

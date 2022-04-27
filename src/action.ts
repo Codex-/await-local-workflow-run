@@ -15,7 +15,7 @@ export interface ActionConfig {
   /**
    * The workflow that you wish to await completion of.
    */
-  workflowName: string;
+  workflow: string;
 
   /**
    * A specific check within the workflow to wait for. Await all checks if this is not specified.
@@ -38,7 +38,7 @@ export interface ActionConfig {
 export function getConfig(): ActionConfig {
   return {
     token: core.getInput("token", { required: true }),
-    workflowName: core.getInput("workflow_name", { required: true }),
+    workflow: core.getInput("workflow", { required: true }),
     checkName: (() => {
       const input = core.getInput("check_name");
       return input === "" ? undefined : input;

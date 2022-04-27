@@ -22,8 +22,8 @@ async function run(): Promise<void> {
     let elapsedTime = Date.now() - startTime;
 
     core.info(
-      `Awaiting completion of local Workflow Run ${config.workflowName}...\n` +
-        `  Workflow: ${config.workflowName}\n` +
+      `Awaiting completion of local Workflow Run ${config.workflow}...\n` +
+        `  Workflow: ${config.workflow}\n` +
         (config.checkName ? `  Check: ${config.checkName}\n` : "") +
         `  Timeout: ${config.timeoutMins} (mins)`
     );
@@ -31,7 +31,7 @@ async function run(): Promise<void> {
     // Give some initial time for GitHub to wake up and queue the checks.
     await sleep(INITIAL_WAIT_MS);
 
-    const workflowId = await getWorkflowId(config.workflowName);
+    const workflowId = await getWorkflowId(config.workflow);
     let workflowRunId: number | undefined;
     while (elapsedTime < timeoutMs) {
       attemptNo++;
@@ -54,7 +54,7 @@ async function run(): Promise<void> {
           if (conclusion !== WorkflowRunConclusion.Success) {
             core.error(completionMsg);
             core.setFailed(
-              `Workflow ${config.workflowName} (${workflowId}) has not completed successfully: ${conclusion}.`
+              `Workflow ${config.workflow} (${workflowId}) has not completed successfully: ${conclusion}.`
             );
           } else {
             core.info(completionMsg);
