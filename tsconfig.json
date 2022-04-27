@@ -2,12 +2,13 @@
   "compilerOptions": {
     "target": "es2019",
     "module": "commonjs",
-    "pretty": true,
+    "noEmit": true,
 
     "outDir": "lib",
     "rootDir": "src",
 
     "esModuleInterop": true,
+    "isolatedModules": true,
     "noImplicitAny": true,
     "strict": true
   },

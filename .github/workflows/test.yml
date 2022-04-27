@@ -9,7 +9,8 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - run: npm ci
-      - run: npm run build
+      - name: build
+        run: npm run build:types
       - name: test
         id: test
         if: ${{ always() }}
@@ -45,7 +46,6 @@ jobs:
           node-version: lts/*
           cache: npm
       - run: npm ci
-      - run: npm run build
       - name: test
         run: npm run test -- --coverage
       - name: codecov
