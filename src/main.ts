@@ -1,4 +1,5 @@
 import * as core from "@actions/core";
+import { Duration } from "luxon";
 import { getConfig } from "./action";
 import {
   getWorkflowId,
@@ -25,7 +26,7 @@ async function run(): Promise<void> {
       `Awaiting completion of local Workflow Run ${config.workflow}...\n` +
         `  Workflow: ${config.workflow}\n` +
         (config.checkName ? `  Check: ${config.checkName}\n` : "") +
-        `  Timeout: ${config.timeoutMins} (mins)`
+        `  Timeout: ${Duration.fromMillis(timeoutMs).toHuman()}`
     );
 
     // Give some initial time for GitHub to wake up and queue the checks.
