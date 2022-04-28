@@ -59,7 +59,7 @@ describe("Action", () => {
       mockEnvConfig.poll_interval_ms = "";
       const config: ActionConfig = getConfig();
 
-      expect(config.pollIntervalMs).toStrictEqual(5000);
+      expect(config.pollIntervalMs).toStrictEqual(15000);
     });
 
     it("should throw if it cannot parse a string into a number", () => {

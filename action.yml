@@ -18,7 +18,7 @@ inputs:
     default: 15
   poll_interval_ms:
     description: Frequency to poll the workflow run for a status.
-    default: 5000
+    default: 15000
 runs:
   using: node16
   main: dist/index.js

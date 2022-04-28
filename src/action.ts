@@ -1,7 +1,7 @@
 import * as core from "@actions/core";
 
 const WORKFLOW_TIMEOUT_MINUTES = 15;
-const POLL_INTERVAL_MS = 5000;
+const POLL_INTERVAL_MS = 15000;
 
 /**
  * action.yaml definition.

@@ -10970,7 +10970,7 @@ var import_luxon2 = __toESM(require_luxon());
 // src/action.ts
 var core = __toESM(require_core());
 var WORKFLOW_TIMEOUT_MINUTES = 15;
-var POLL_INTERVAL_MS = 5e3;
+var POLL_INTERVAL_MS = 15e3;
 function getConfig() {
   return {
     token: core.getInput("token", { required: true }),
