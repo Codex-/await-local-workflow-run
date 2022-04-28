@@ -1,4 +1,4 @@
-name: sleep
+name: Sleep
 on:
   push:
 

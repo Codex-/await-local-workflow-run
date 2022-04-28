@@ -1,4 +1,4 @@
-name: test
+name: Build
 on:
   pull_request:
   push:
@@ -21,31 +21,8 @@ jobs:
       - name: style
         if: ${{ always() }}
         run: npm run format:check
-  test-check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Await a workflow
-        uses: ./
-        with:
-          token: ${{ github.token }}
-          workflow: sleep.yml
-          check_name: short
-          timeout_mins: 5
-          poll_interval_ms: 10000 # 10 seconds
-  test-workflow:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Await a workflow
-        uses: ./
-        with:
-          token: ${{ github.token }}
-          workflow: sleep.yml
-          timeout_mins: 5
-          poll_interval_ms: 10000 # 10 seconds
   codecov: # Send only a single coverage report per run
-    needs: [build, test]
+    needs: [build]
     timeout-minutes: 15
     env:
       CI: true
