@@ -96,7 +96,7 @@ export function resetGetWorkflowRunIdCfg() {
   attemptWithBranch = false;
 }
 
-export enum WorkflowRunStatus {
+export enum RunStatus {
   Queued = "queued",
   InProgress = "in_progress",
   Completed = "completed",
@@ -106,7 +106,7 @@ export interface WorkflowRun {
   id: number;
   attempt: number;
   checkSuiteId?: number;
-  status?: WorkflowRunStatus;
+  status?: RunStatus;
 }
 
 /**
@@ -150,7 +150,7 @@ export async function getWorkflowRuns(
         id: workflowRun.id,
         attempt: workflowRun.run_attempt || 0,
         checkSuiteId: workflowRun.check_suite_id,
-        status: (workflowRun.status as WorkflowRunStatus) || undefined,
+        status: (workflowRun.status as RunStatus) || undefined,
       }));
 
     // Ordering should be newest to oldest by date and time, but
@@ -184,7 +184,7 @@ export async function getWorkflowRuns(
   } catch (error) {
     if (error instanceof Error) {
       core.error(
-        `getWorkflowRunIds: An unexpected error has occurred: ${error.message}`
+        `getWorkflowRuns: An unexpected error has occurred: ${error.message}`
       );
       error.stack && core.debug(error.stack);
     }
@@ -192,7 +192,7 @@ export async function getWorkflowRuns(
   }
 }
 
-export enum WorkflowRunConclusion {
+export enum RunConclusion {
   Success = "success",
   Failure = "failure",
   Neutral = "neutral",
@@ -200,16 +200,15 @@ export enum WorkflowRunConclusion {
   Skipped = "skipped",
   TimedOut = "timed_out",
   ActionRequired = "action_required",
+  Stale = "stale",
 }
 
-export interface WorkflowRunState {
-  status: WorkflowRunStatus | null;
-  conclusion: WorkflowRunConclusion | null;
+export interface RunState {
+  status: RunStatus | null;
+  conclusion: RunConclusion | null;
 }
 
-export async function getWorkflowRunState(
-  runId: number
-): Promise<WorkflowRunState> {
+export async function getWorkflowRunState(runId: number): Promise<RunState> {
   try {
     // https://docs.github.com/en/rest/reference/actions#get-a-workflow-run
     const response = await octokit.rest.actions.getWorkflowRun({
@@ -233,8 +232,8 @@ export async function getWorkflowRunState(
     );
 
     return {
-      status: response.data.status as WorkflowRunStatus | null,
-      conclusion: response.data.conclusion as WorkflowRunConclusion | null,
+      status: response.data.status as RunStatus | null,
+      conclusion: response.data.conclusion as RunConclusion | null,
     };
   } catch (error) {
     if (error instanceof Error) {
@@ -249,7 +248,7 @@ export async function getWorkflowRunState(
 
 type WorkflowCompleted = {
   completed: true;
-  conclusion?: WorkflowRunConclusion;
+  conclusion?: RunConclusion;
 };
 
 type WorkflowIncomplete = {
@@ -263,16 +262,17 @@ export async function getWorkflowRunStatus(
 ): Promise<WorkflowResult> {
   const { status, conclusion } = await getWorkflowRunState(runId);
 
-  if (status === WorkflowRunStatus.Completed) {
+  if (status === RunStatus.Completed) {
     switch (conclusion) {
-      case WorkflowRunConclusion.Success:
+      case RunConclusion.Success:
         break;
-      case WorkflowRunConclusion.ActionRequired:
-      case WorkflowRunConclusion.Cancelled:
-      case WorkflowRunConclusion.Failure:
-      case WorkflowRunConclusion.Neutral:
-      case WorkflowRunConclusion.Skipped:
-      case WorkflowRunConclusion.TimedOut:
+      case RunConclusion.ActionRequired:
+      case RunConclusion.Cancelled:
+      case RunConclusion.Failure:
+      case RunConclusion.Neutral:
+      case RunConclusion.Skipped:
+      case RunConclusion.Stale:
+      case RunConclusion.TimedOut:
         core.error(`Run has failed with conclusion: ${conclusion}`);
         core.setFailed(conclusion);
         break;

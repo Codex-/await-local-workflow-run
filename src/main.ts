@@ -6,7 +6,7 @@ import {
   getWorkflowRunId,
   getWorkflowRunStatus,
   init,
-  WorkflowRunConclusion,
+  RunConclusion,
 } from "./api";
 import { getElapsedTime, sleep } from "./utils";
 
@@ -52,7 +52,7 @@ async function run(): Promise<void> {
             `  Elapsed Time: ${getElapsedTime(startTime, Date.now())}\n` +
             `  Conclusion: ${conclusion}`;
 
-          if (conclusion !== WorkflowRunConclusion.Success) {
+          if (conclusion !== RunConclusion.Success) {
             core.error(completionMsg);
             core.setFailed(
               `Workflow ${config.workflow} (${workflowId}) has not completed successfully: ${conclusion}.`
