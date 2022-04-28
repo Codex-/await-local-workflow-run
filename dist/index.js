@@ -11142,21 +11142,35 @@ async function getWorkflowRuns(workflowId, tryUseBranch = false) {
     return runs;
   } catch (error3) {
     if (error3 instanceof Error) {
-      core3.error(`getWorkflowRunIds: An unexpected error has occurred: ${error3.message}`);
+      core3.error(`getWorkflowRuns: An unexpected error has occurred: ${error3.message}`);
       error3.stack && core3.debug(error3.stack);
     }
     throw error3;
   }
 }
-async function getWorkflowRunState(runId) {
+async function getRunState(runId, runType) {
   try {
-    const response = await octokit.rest.actions.getWorkflowRun({
-      owner: github.context.repo.owner,
-      repo: github.context.repo.repo,
-      run_id: runId
-    });
+    let response;
+    switch (runType) {
+      case 0 /* WorkflowRun */:
+        response = await octokit.rest.actions.getWorkflowRun({
+          owner: github.context.repo.owner,
+          repo: github.context.repo.repo,
+          run_id: runId
+        });
+        break;
+      case 1 /* CheckRun */:
+        response = await octokit.rest.checks.get({
+          owner: github.context.repo.owner,
+          repo: github.context.repo.repo,
+          check_run_id: runId
+        });
+        break;
+      default:
+        throw new Error("Unknown run type specified");
+    }
     if (response.status !== 200) {
-      throw new Error(`Failed to get Workflow Run state, expected 200 but received ${response.status}`);
+      throw new Error(`Failed to get run state, expected 200 but received ${response.status}`);
     }
     core3.debug(`Fetched Run:
   Repository: ${github.context.repo.owner}/${github.context.repo.repo}
@@ -11169,14 +11183,14 @@ async function getWorkflowRunState(runId) {
     };
   } catch (error3) {
     if (error3 instanceof Error) {
-      core3.error(`getWorkflowRunState: An unexpected error has occurred: ${error3.message}`);
+      core3.error(`getRunState: An unexpected error has occurred: ${error3.message}`);
       error3.stack && core3.debug(error3.stack);
     }
     throw error3;
   }
 }
-async function getWorkflowRunStatus(runId) {
-  const { status, conclusion } = await getWorkflowRunState(runId);
+async function getRunStatus(runId, runType) {
+  const { status, conclusion } = await getRunState(runId, runType);
   if (status === "completed" /* Completed */) {
     switch (conclusion) {
       case "success" /* Success */:
@@ -11186,6 +11200,7 @@ async function getWorkflowRunStatus(runId) {
       case "failure" /* Failure */:
       case "neutral" /* Neutral */:
       case "skipped" /* Skipped */:
+      case "stale" /* Stale */:
       case "timed_out" /* TimedOut */:
         core3.error(`Run has failed with conclusion: ${conclusion}`);
         core3.setFailed(conclusion);
@@ -11228,7 +11243,7 @@ async function run() {
         workflowRunId = await getWorkflowRunId(workflowId);
       }
       if (workflowRunId !== void 0) {
-        const workflowRunStatus = await getWorkflowRunStatus(workflowRunId);
+        const workflowRunStatus = await getRunStatus(workflowRunId, 0 /* WorkflowRun */);
         if (workflowRunStatus.completed) {
           const conclusion = workflowRunStatus.conclusion;
           const completionMsg = `Workflow Run Completed:

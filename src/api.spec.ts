@@ -1,15 +1,17 @@
 import * as core from "@actions/core";
 import * as github from "@actions/github";
 import {
+  getCheckId,
+  getRunState,
+  getRunStatus,
   getWorkflowId,
   getWorkflowRunId,
   getWorkflowRuns,
-  getWorkflowRunState,
-  getWorkflowRunStatus,
   init,
   resetGetWorkflowRunIdCfg,
-  WorkflowRunConclusion,
-  WorkflowRunStatus,
+  RunConclusion,
+  RunStatus,
+  RunType,
 } from "./api";
 
 interface MockResponse {
@@ -19,6 +21,14 @@ interface MockResponse {
 
 const mockOctokit = {
   rest: {
+    checks: {
+      get: async (_req?: any): Promise<MockResponse> => {
+        throw new Error("Should be mocked");
+      },
+      listForSuite: async (_req?: any): Promise<MockResponse> => {
+        throw new Error("Should be mocked");
+      },
+    },
     actions: {
       getWorkflowRun: async (_req?: any): Promise<MockResponse> => {
         throw new Error("Should be mocked");
@@ -152,7 +162,7 @@ describe("API", () => {
           check_suite_id: 654321,
           head_sha: "1234567890123456789012345678901234567890",
           run_attempt: 1,
-          status: WorkflowRunStatus.InProgress,
+          status: RunStatus.InProgress,
         },
       ];
       jest.spyOn(mockOctokit.rest.actions, "listWorkflowRuns").mockReturnValue(
@@ -176,7 +186,7 @@ describe("API", () => {
           check_suite_id: 654321,
           head_sha: "0", // different sha
           run_attempt: 1,
-          status: WorkflowRunStatus.InProgress,
+          status: RunStatus.InProgress,
         },
       ];
       jest.spyOn(mockOctokit.rest.actions, "listWorkflowRuns").mockReturnValue(
@@ -200,7 +210,7 @@ describe("API", () => {
           check_suite_id: 654321,
           head_sha: "1234567890123456789012345678901234567890",
           run_attempt: 1,
-          status: WorkflowRunStatus.InProgress,
+          status: RunStatus.InProgress,
         },
       ];
       const listWorkflowRunsSpy = jest
@@ -242,69 +252,76 @@ describe("API", () => {
         check_suite_id: 0,
         head_sha: "0",
         run_attempt: 1,
-        status: WorkflowRunStatus.Completed,
+        status: RunStatus.Completed,
       },
       {
         id: 1,
         check_suite_id: 0,
         head_sha: mockSha,
         run_attempt: 0,
-        status: WorkflowRunStatus.Completed,
+        status: RunStatus.Completed,
       },
       {
         id: 2,
         check_suite_id: 0,
         head_sha: "0",
         run_attempt: 2,
-        status: WorkflowRunStatus.Completed,
+        status: RunStatus.Completed,
       },
       {
         id: 3,
         check_suite_id: 0,
         head_sha: "0",
         run_attempt: 3,
-        status: WorkflowRunStatus.Completed,
+        status: RunStatus.Completed,
       },
       {
         id: 4,
         check_suite_id: 0,
         head_sha: mockSha,
         run_attempt: 1,
-        status: WorkflowRunStatus.Completed,
+        status: RunStatus.Completed,
       },
       {
         id: 9,
         check_suite_id: 0,
         head_sha: mockSha,
         run_attempt: 3,
-        status: WorkflowRunStatus.Queued,
+        status: RunStatus.Queued,
       },
       {
         id: 5,
         check_suite_id: 0,
         head_sha: "0",
         run_attempt: 4,
-        status: WorkflowRunStatus.Completed,
+        status: RunStatus.Completed,
       },
       {
         id: 6,
         head_sha: "0",
         run_attempt: 5,
-        status: WorkflowRunStatus.Completed,
+        status: RunStatus.Completed,
       },
       {
         id: 7,
         check_suite_id: 0,
         head_sha: mockSha,
         run_attempt: 2,
-        status: WorkflowRunStatus.InProgress,
+        status: RunStatus.InProgress,
       },
       {
         id: 8,
         check_suite_id: 0,
         head_sha: "0",
         run_attempt: 6,
-        status: WorkflowRunStatus.Completed,
+        status: RunStatus.Completed,
+      },
+      {
+        id: 9,
+        check_suite_id: 0,
+        head_sha: mockSha,
+        run_attempt: 2,
+        status: RunStatus.Queued,
       },
     ];
     const mockData = {
@@ -470,81 +487,354 @@ describe("API", () => {
     });
   });
 
-  describe("getWorkflowRunState", () => {
-    it("should return the workflow run state for a given run ID", async () => {
-      const mockData = {
-        status: WorkflowRunStatus.Completed,
-        conclusion: WorkflowRunConclusion.Cancelled,
-      };
-      jest.spyOn(mockOctokit.rest.actions, "getWorkflowRun").mockReturnValue(
+  describe("getCheckId", () => {
+    it("should return a run ID", async () => {
+      const mockCheckRunsApiData = [
+        {
+          id: 123456,
+          name: "ganon",
+        },
+      ];
+      jest.spyOn(mockOctokit.rest.checks, "listForSuite").mockReturnValue(
         Promise.resolve({
-          data: mockData,
+          data: {
+            total_count: mockCheckRunsApiData.length,
+            check_runs: mockCheckRunsApiData,
+          },
+          status: 200,
+        })
+      );
+      const runID = await getCheckId(0, "ganon");
+
+      expect(runID).toStrictEqual(123456);
+    });
+
+    it("should throw an error if it cannot locate the requested check name", async () => {
+      const mockCheckRunsApiData = [
+        {
+          id: 123456,
+          name: "ganon",
+        },
+      ];
+      jest.spyOn(mockOctokit.rest.checks, "listForSuite").mockReturnValue(
+        Promise.resolve({
+          data: {
+            total_count: mockCheckRunsApiData.length,
+            check_runs: mockCheckRunsApiData,
+          },
           status: 200,
         })
       );
 
-      const state = await getWorkflowRunState(123456);
-      expect(state.conclusion).toStrictEqual(mockData.conclusion);
-      expect(state.status).toStrictEqual(mockData.status);
+      await expect(() => getCheckId(0, "link")).rejects.toThrowError(
+        "Failed to get Check ID for 'link', available checks: [ganon (123456)]"
+      );
     });
 
     it("should throw if a non-200 status is returned", async () => {
       const errorStatus = 401;
-      jest.spyOn(mockOctokit.rest.actions, "getWorkflowRun").mockReturnValue(
+      jest.spyOn(mockOctokit.rest.checks, "listForSuite").mockReturnValue(
         Promise.resolve({
           data: undefined,
           status: errorStatus,
         })
       );
 
-      await expect(getWorkflowRunState(0)).rejects.toThrow(
-        `Failed to get Workflow Run state, expected 200 but received ${errorStatus}`
+      await expect(getCheckId(0, "")).rejects.toThrow(
+        `Failed to get Checks, expected 200 but received ${errorStatus}`
       );
     });
   });
 
-  describe("getWorkflowRunStatus", () => {
-    it("should return the conclusion when completed", async () => {
-      const mockData = {
-        status: WorkflowRunStatus.Completed,
-        conclusion: WorkflowRunConclusion.Cancelled,
-      };
-      jest.spyOn(mockOctokit.rest.actions, "getWorkflowRun").mockReturnValue(
-        Promise.resolve({
-          data: mockData,
-          status: 200,
-        })
+  describe("getRunState", () => {
+    it("should throw if an unknown run type is specified", async () => {
+      await expect(() => getRunState(123456, -1)).rejects.toThrowError(
+        "Unknown run type specified"
       );
-
-      const runStatus = await getWorkflowRunStatus(0);
-
-      expect(runStatus.completed).toBeTruthy();
-      if (runStatus.completed) {
-        expect(runStatus.conclusion).toStrictEqual(
-          WorkflowRunConclusion.Cancelled
-        );
-      } else {
-        throw new Error("should be completed");
-      }
     });
 
-    it("should return with completed set to false when not completed", async () => {
-      const mockData = {
-        status: WorkflowRunStatus.Queued,
-      };
-      jest.spyOn(mockOctokit.rest.actions, "getWorkflowRun").mockReturnValue(
-        Promise.resolve({
-          data: mockData,
-          status: 200,
-        })
-      );
+    describe("workflow", () => {
+      it("should return the run state for a given run ID", async () => {
+        const mockData = {
+          status: RunStatus.Completed,
+          conclusion: RunConclusion.Cancelled,
+        };
+        jest.spyOn(mockOctokit.rest.actions, "getWorkflowRun").mockReturnValue(
+          Promise.resolve({
+            data: mockData,
+            status: 200,
+          })
+        );
 
-      const runStatus = await getWorkflowRunStatus(0);
+        const state = await getRunState(123456, RunType.WorkflowRun);
+        expect(state.conclusion).toStrictEqual(mockData.conclusion);
+        expect(state.status).toStrictEqual(mockData.status);
+      });
 
-      expect(runStatus.completed).toBeFalsy();
-      if (runStatus.completed) {
-        throw new Error("should be not be completed");
-      }
+      it("should throw if a non-200 status is returned", async () => {
+        const errorStatus = 401;
+        jest.spyOn(mockOctokit.rest.actions, "getWorkflowRun").mockReturnValue(
+          Promise.resolve({
+            data: undefined,
+            status: errorStatus,
+          })
+        );
+
+        await expect(getRunState(0, RunType.WorkflowRun)).rejects.toThrow(
+          `Failed to get run state, expected 200 but received ${errorStatus}`
+        );
+      });
+    });
+
+    describe("check", () => {
+      it("should return the run state for a given run ID", async () => {
+        const mockData = {
+          status: RunStatus.Completed,
+          conclusion: RunConclusion.Cancelled,
+        };
+        jest.spyOn(mockOctokit.rest.actions, "getWorkflowRun").mockReturnValue(
+          Promise.resolve({
+            data: mockData,
+            status: 200,
+          })
+        );
+
+        const state = await getRunState(123456, RunType.WorkflowRun);
+        expect(state.conclusion).toStrictEqual(mockData.conclusion);
+        expect(state.status).toStrictEqual(mockData.status);
+      });
+
+      it("should throw if a non-200 status is returned", async () => {
+        const errorStatus = 401;
+        jest.spyOn(mockOctokit.rest.actions, "getWorkflowRun").mockReturnValue(
+          Promise.resolve({
+            data: undefined,
+            status: errorStatus,
+          })
+        );
+
+        await expect(getRunState(0, RunType.WorkflowRun)).rejects.toThrow(
+          `Failed to get run state, expected 200 but received ${errorStatus}`
+        );
+      });
+    });
+  });
+
+  describe("getRunStatus", () => {
+    describe("workflow", () => {
+      it("should return the conclusion when completed", async () => {
+        const mockData = {
+          status: RunStatus.Completed,
+          conclusion: RunConclusion.Cancelled,
+        };
+        jest.spyOn(mockOctokit.rest.actions, "getWorkflowRun").mockReturnValue(
+          Promise.resolve({
+            data: mockData,
+            status: 200,
+          })
+        );
+
+        const runStatus = await getRunStatus(0, RunType.WorkflowRun);
+
+        expect(runStatus.completed).toBeTruthy();
+        if (runStatus.completed) {
+          expect(runStatus.conclusion).toStrictEqual(RunConclusion.Cancelled);
+        } else {
+          throw new Error("should be completed");
+        }
+      });
+
+      it("should not set a failure status if the conclusion is a success", async () => {
+        const mockData = {
+          status: RunStatus.Completed,
+          conclusion: RunConclusion.Success,
+        };
+        jest.spyOn(mockOctokit.rest.actions, "getWorkflowRun").mockReturnValue(
+          Promise.resolve({
+            data: mockData,
+            status: 200,
+          })
+        );
+        const coreSetFailedSpy = jest
+          .spyOn(core, "setFailed")
+          .mockImplementation();
+
+        await getRunStatus(0, RunType.WorkflowRun);
+
+        expect(coreSetFailedSpy).not.toBeCalled();
+      });
+
+      it("should set the status to non-success when the conclusion is not a success", async () => {
+        const mockData = {
+          status: RunStatus.Completed,
+          conclusion: RunConclusion.Failure,
+        };
+        jest.spyOn(mockOctokit.rest.actions, "getWorkflowRun").mockReturnValue(
+          Promise.resolve({
+            data: mockData,
+            status: 200,
+          })
+        );
+        const coreSetFailedSpy = jest
+          .spyOn(core, "setFailed")
+          .mockImplementation();
+
+        await getRunStatus(0, RunType.WorkflowRun);
+
+        expect(coreSetFailedSpy.mock.calls[0][0]).toStrictEqual(
+          RunConclusion.Failure
+        );
+      });
+
+      it("should set the status to non-success when the conclusion is unknown", async () => {
+        const unknownStatus = "Clown Car?";
+        const mockData = {
+          status: RunStatus.Completed,
+          conclusion: unknownStatus,
+        };
+        jest.spyOn(mockOctokit.rest.actions, "getWorkflowRun").mockReturnValue(
+          Promise.resolve({
+            data: mockData,
+            status: 200,
+          })
+        );
+        const coreSetFailedSpy = jest
+          .spyOn(core, "setFailed")
+          .mockImplementation();
+
+        await getRunStatus(0, RunType.WorkflowRun);
+
+        expect(coreSetFailedSpy.mock.calls[0][0]).toStrictEqual(
+          `Unknown conclusion: ${unknownStatus}`
+        );
+      });
+
+      it("should return with completed set to false when not completed", async () => {
+        const mockData = {
+          status: RunStatus.Queued,
+        };
+        jest.spyOn(mockOctokit.rest.actions, "getWorkflowRun").mockReturnValue(
+          Promise.resolve({
+            data: mockData,
+            status: 200,
+          })
+        );
+
+        const runStatus = await getRunStatus(0, RunType.WorkflowRun);
+
+        expect(runStatus.completed).toBeFalsy();
+        if (runStatus.completed) {
+          throw new Error("should be not be completed");
+        }
+      });
+    });
+
+    describe("check", () => {
+      it("should return the conclusion when completed", async () => {
+        const mockData = {
+          status: RunStatus.Completed,
+          conclusion: RunConclusion.Cancelled,
+        };
+        jest.spyOn(mockOctokit.rest.checks, "get").mockReturnValue(
+          Promise.resolve({
+            data: mockData,
+            status: 200,
+          })
+        );
+
+        const runStatus = await getRunStatus(0, RunType.CheckRun);
+
+        expect(runStatus.completed).toBeTruthy();
+        if (runStatus.completed) {
+          expect(runStatus.conclusion).toStrictEqual(RunConclusion.Cancelled);
+        } else {
+          throw new Error("should be completed");
+        }
+      });
+
+      it("should not set a failure status if the conclusion is a success", async () => {
+        const mockData = {
+          status: RunStatus.Completed,
+          conclusion: RunConclusion.Success,
+        };
+        jest.spyOn(mockOctokit.rest.checks, "get").mockReturnValue(
+          Promise.resolve({
+            data: mockData,
+            status: 200,
+          })
+        );
+        const coreSetFailedSpy = jest
+          .spyOn(core, "setFailed")
+          .mockImplementation();
+
+        await getRunStatus(0, RunType.CheckRun);
+
+        expect(coreSetFailedSpy).not.toBeCalled();
+      });
+
+      it("should set the status to non-success when the conclusion is not a success", async () => {
+        const mockData = {
+          status: RunStatus.Completed,
+          conclusion: RunConclusion.Failure,
+        };
+        jest.spyOn(mockOctokit.rest.checks, "get").mockReturnValue(
+          Promise.resolve({
+            data: mockData,
+            status: 200,
+          })
+        );
+        const coreSetFailedSpy = jest
+          .spyOn(core, "setFailed")
+          .mockImplementation();
+
+        await getRunStatus(0, RunType.CheckRun);
+
+        expect(coreSetFailedSpy.mock.calls[0][0]).toStrictEqual(
+          RunConclusion.Failure
+        );
+      });
+
+      it("should set the status to non-success when the conclusion is unknown", async () => {
+        const unknownStatus = "Clown Car?";
+        const mockData = {
+          status: RunStatus.Completed,
+          conclusion: unknownStatus,
+        };
+        jest.spyOn(mockOctokit.rest.checks, "get").mockReturnValue(
+          Promise.resolve({
+            data: mockData,
+            status: 200,
+          })
+        );
+        const coreSetFailedSpy = jest
+          .spyOn(core, "setFailed")
+          .mockImplementation();
+
+        await getRunStatus(0, RunType.CheckRun);
+
+        expect(coreSetFailedSpy.mock.calls[0][0]).toStrictEqual(
+          `Unknown conclusion: ${unknownStatus}`
+        );
+      });
+
+      it("should return with completed set to false when not completed", async () => {
+        const mockData = {
+          status: RunStatus.Queued,
+        };
+        jest.spyOn(mockOctokit.rest.checks, "get").mockReturnValue(
+          Promise.resolve({
+            data: mockData,
+            status: 200,
+          })
+        );
+
+        const runStatus = await getRunStatus(0, RunType.CheckRun);
+
+        expect(runStatus.completed).toBeFalsy();
+        if (runStatus.completed) {
+          throw new Error("should be not be completed");
+        }
+      });
     });
   });
 });

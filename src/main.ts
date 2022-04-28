@@ -2,11 +2,12 @@ import * as core from "@actions/core";
 import { Duration } from "luxon";
 import { getConfig } from "./action";
 import {
+  getRunStatus,
   getWorkflowId,
   getWorkflowRunId,
-  getWorkflowRunStatus,
   init,
   RunConclusion,
+  RunType,
 } from "./api";
 import { getElapsedTime, sleep } from "./utils";
 
@@ -43,7 +44,10 @@ async function run(): Promise<void> {
       }
 
       if (workflowRunId !== undefined) {
-        const workflowRunStatus = await getWorkflowRunStatus(workflowRunId);
+        const workflowRunStatus = await getRunStatus(
+          workflowRunId,
+          RunType.WorkflowRun
+        );
         if (workflowRunStatus.completed) {
           const conclusion = workflowRunStatus.conclusion;
           const completionMsg =

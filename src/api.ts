@@ -203,23 +203,113 @@ export enum RunConclusion {
   Stale = "stale",
 }
 
+type WorkflowCompleted = {
+  completed: true;
+  conclusion?: RunConclusion;
+};
+
+type WorkflowIncomplete = {
+  completed: false;
+};
+
+export type WorkflowResult = WorkflowCompleted | WorkflowIncomplete;
+
+export async function getCheckId(
+  checkSuiteId: number,
+  checkName: string
+): Promise<number> {
+  try {
+    // https://docs.github.com/en/rest/checks/runs#list-check-runs-in-a-check-suite
+    const response = await octokit.rest.checks.listForSuite({
+      owner: github.context.repo.owner,
+      repo: github.context.repo.repo,
+      check_suite_id: checkSuiteId,
+    });
+
+    if (response.status !== 200) {
+      throw new Error(
+        `Failed to get Checks, expected 200 but received ${response.status}`
+      );
+    }
+
+    const checkIdsMap: Record<string, number | undefined> = Object.fromEntries(
+      response.data.check_runs.map((check) => [check.name, check.id])
+    );
+    const checksWithIds = response.data.check_runs.map(
+      (check) => `${check.name} (${check.id})`
+    );
+
+    core.debug(
+      `Fetched Checks:\n` +
+        `  Repository: ${github.context.repo.owner}/${github.context.repo.repo}\n` +
+        `  Total Checks: ${response.data.total_count}\n` +
+        `  Checks: [${checksWithIds}]`
+    );
+
+    const id = checkIdsMap[checkName];
+    if (id === undefined) {
+      throw new Error(
+        `Failed to get Check ID for '${checkName}', available checks: [${checksWithIds}]`
+      );
+    }
+
+    return id;
+  } catch (error) {
+    if (error instanceof Error) {
+      core.error(
+        `getCheckId: An unexpected error has occurred: ${error.message}`
+      );
+      error.stack && core.debug(error.stack);
+    }
+    throw error;
+  }
+}
+
+export enum RunType {
+  WorkflowRun,
+  CheckRun,
+}
+
 export interface RunState {
   status: RunStatus | null;
   conclusion: RunConclusion | null;
 }
 
-export async function getWorkflowRunState(runId: number): Promise<RunState> {
+type CheckRunResponse = Awaited<ReturnType<Octokit["rest"]["checks"]["get"]>>;
+type WorkflowRunResponse = Awaited<
+  ReturnType<Octokit["rest"]["actions"]["getWorkflowRun"]>
+>;
+
+export async function getRunState(
+  runId: number,
+  runType: RunType
+): Promise<RunState> {
   try {
-    // https://docs.github.com/en/rest/reference/actions#get-a-workflow-run
-    const response = await octokit.rest.actions.getWorkflowRun({
-      owner: github.context.repo.owner,
-      repo: github.context.repo.repo,
-      run_id: runId,
-    });
+    let response: CheckRunResponse | WorkflowRunResponse;
+    switch (runType) {
+      case RunType.WorkflowRun:
+        // https://docs.github.com/en/rest/reference/actions#get-a-workflow-run
+        response = await octokit.rest.actions.getWorkflowRun({
+          owner: github.context.repo.owner,
+          repo: github.context.repo.repo,
+          run_id: runId,
+        });
+        break;
+      case RunType.CheckRun:
+        // https://docs.github.com/en/rest/checks/runs#get-a-check-run
+        response = await octokit.rest.checks.get({
+          owner: github.context.repo.owner,
+          repo: github.context.repo.repo,
+          check_run_id: runId,
+        });
+        break;
+      default:
+        throw new Error("Unknown run type specified");
+    }
 
     if (response.status !== 200) {
       throw new Error(
-        `Failed to get Workflow Run state, expected 200 but received ${response.status}`
+        `Failed to get run state, expected 200 but received ${response.status}`
       );
     }
 
@@ -238,7 +328,7 @@ export async function getWorkflowRunState(runId: number): Promise<RunState> {
   } catch (error) {
     if (error instanceof Error) {
       core.error(
-        `getWorkflowRunState: An unexpected error has occurred: ${error.message}`
+        `getRunState: An unexpected error has occurred: ${error.message}`
       );
       error.stack && core.debug(error.stack);
     }
@@ -246,21 +336,11 @@ export async function getWorkflowRunState(runId: number): Promise<RunState> {
   }
 }
 
-type WorkflowCompleted = {
-  completed: true;
-  conclusion?: RunConclusion;
-};
-
-type WorkflowIncomplete = {
-  completed: false;
-};
-
-export type WorkflowResult = WorkflowCompleted | WorkflowIncomplete;
-
-export async function getWorkflowRunStatus(
-  runId: number
+export async function getRunStatus(
+  runId: number,
+  runType: RunType
 ): Promise<WorkflowResult> {
-  const { status, conclusion } = await getWorkflowRunState(runId);
+  const { status, conclusion } = await getRunState(runId, runType);
 
   if (status === RunStatus.Completed) {
     switch (conclusion) {
