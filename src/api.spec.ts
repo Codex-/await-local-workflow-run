@@ -5,10 +5,10 @@ import {
   getRunState,
   getRunStatus,
   getWorkflowId,
-  getWorkflowRunId,
+  getWorkflowRun,
   getWorkflowRuns,
   init,
-  resetGetWorkflowRunIdCfg,
+  resetGetWorkflowRunCfg,
   RunConclusion,
   RunStatus,
   RunType,
@@ -150,9 +150,9 @@ describe("API", () => {
     });
   });
 
-  describe("getWorkflowRunId", () => {
+  describe("getWorkflowRun", () => {
     beforeEach(() => {
-      resetGetWorkflowRunIdCfg();
+      resetGetWorkflowRunCfg();
     });
 
     it("should return a run ID", async () => {
@@ -174,9 +174,14 @@ describe("API", () => {
           status: 200,
         })
       );
-      const runID = await getWorkflowRunId(0);
+      const run = await getWorkflowRun(0);
 
-      expect(runID).toStrictEqual(123456);
+      expect(run).toStrictEqual({
+        id: mockWorkflowRunsApiData[0].id,
+        attempt: mockWorkflowRunsApiData[0].run_attempt,
+        checkSuiteId: mockWorkflowRunsApiData[0].check_suite_id,
+        status: mockWorkflowRunsApiData[0].status,
+      });
     });
 
     it("should return undefined if it cannot find an ID", async () => {
@@ -198,9 +203,9 @@ describe("API", () => {
           status: 200,
         })
       );
-      const runID = await getWorkflowRunId(0);
+      const run = await getWorkflowRun(0);
 
-      expect(runID).toBeUndefined();
+      expect(run).toBeUndefined();
     });
 
     it("should change to use the branch strategy if no runs are returned for a given ID", async () => {
@@ -234,11 +239,16 @@ describe("API", () => {
           })
         );
 
-      expect(await getWorkflowRunId(0)).toBeUndefined();
+      expect(await getWorkflowRun(0)).toBeUndefined();
       expect(Object.keys(listWorkflowRunsSpy.mock.calls[0][0])).not.toContain(
         "branch"
       );
-      expect(await getWorkflowRunId(0)).toStrictEqual(123456);
+      expect(await getWorkflowRun(0)).toStrictEqual({
+        id: mockWorkflowRunsApiData[0].id,
+        attempt: mockWorkflowRunsApiData[0].run_attempt,
+        checkSuiteId: mockWorkflowRunsApiData[0].check_suite_id,
+        status: mockWorkflowRunsApiData[0].status,
+      });
       expect(Object.keys(listWorkflowRunsSpy.mock.calls[1][0])).toContain(
         "branch"
       );

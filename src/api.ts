@@ -70,9 +70,9 @@ export async function getWorkflowId(workflowFilename: string): Promise<number> {
 }
 
 let attemptWithBranch = false;
-export async function getWorkflowRunId(
+export async function getWorkflowRun(
   workflowId: number
-): Promise<number | undefined> {
+): Promise<WorkflowRun | undefined> {
   const workflowRuns = await getWorkflowRuns(workflowId, attemptWithBranch);
   if (workflowRuns.length === 0) {
     attemptWithBranch = !attemptWithBranch;
@@ -89,10 +89,10 @@ export async function getWorkflowRunId(
       `  Run Status: ${workflowRun.status || "null"}`
   );
 
-  return workflowRun.id;
+  return workflowRun;
 }
 
-export function resetGetWorkflowRunIdCfg() {
+export function resetGetWorkflowRunCfg() {
   attemptWithBranch = false;
 }
 
@@ -212,7 +212,7 @@ type WorkflowIncomplete = {
   completed: false;
 };
 
-export type WorkflowResult = WorkflowCompleted | WorkflowIncomplete;
+export type RunResult = WorkflowCompleted | WorkflowIncomplete;
 
 export async function getCheckId(
   checkSuiteId: number,
@@ -339,7 +339,7 @@ export async function getRunState(
 export async function getRunStatus(
   runId: number,
   runType: RunType
-): Promise<WorkflowResult> {
+): Promise<RunResult> {
   const { status, conclusion } = await getRunState(runId, runType);
 
   if (status === RunStatus.Completed) {

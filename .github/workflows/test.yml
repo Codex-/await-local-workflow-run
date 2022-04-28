@@ -21,7 +21,19 @@ jobs:
       - name: style
         if: ${{ always() }}
         run: npm run format:check
-  test:
+  test-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Await a workflow
+        uses: ./
+        with:
+          token: ${{ github.token }}
+          workflow: sleep.yml
+          check_name: short
+          timeout_mins: 5
+          poll_interval_ms: 10000 # 10 seconds
+  test-workflow:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
