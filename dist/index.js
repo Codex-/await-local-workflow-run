@@ -11084,7 +11084,7 @@ async function getWorkflowId(workflowFilename) {
   }
 }
 var attemptWithBranch = false;
-async function getWorkflowRunId(workflowId) {
+async function getWorkflowRun(workflowId) {
   const workflowRuns = await getWorkflowRuns(workflowId, attemptWithBranch);
   if (workflowRuns.length === 0) {
     attemptWithBranch = !attemptWithBranch;
@@ -11097,7 +11097,7 @@ async function getWorkflowRunId(workflowId) {
   Run Attempt: ${workflowRun.attempt}
   Run Check Suite ID: ${workflowRun.checkSuiteId || "null"}
   Run Status: ${workflowRun.status || "null"}`);
-  return workflowRun.id;
+  return workflowRun;
 }
 async function getWorkflowRuns(workflowId, tryUseBranch = false) {
   try {
@@ -11148,6 +11148,35 @@ async function getWorkflowRuns(workflowId, tryUseBranch = false) {
     throw error3;
   }
 }
+async function getCheckId(checkSuiteId, checkName) {
+  try {
+    const response = await octokit.rest.checks.listForSuite({
+      owner: github.context.repo.owner,
+      repo: github.context.repo.repo,
+      check_suite_id: checkSuiteId
+    });
+    if (response.status !== 200) {
+      throw new Error(`Failed to get Checks, expected 200 but received ${response.status}`);
+    }
+    const checkIdsMap = Object.fromEntries(response.data.check_runs.map((check) => [check.name, check.id]));
+    const checksWithIds = response.data.check_runs.map((check) => `${check.name} (${check.id})`);
+    core3.debug(`Fetched Checks:
+  Repository: ${github.context.repo.owner}/${github.context.repo.repo}
+  Total Checks: ${response.data.total_count}
+  Checks: [${checksWithIds}]`);
+    const id = checkIdsMap[checkName];
+    if (id === void 0) {
+      throw new Error(`Failed to get Check ID for '${checkName}', available checks: [${checksWithIds}]`);
+    }
+    return id;
+  } catch (error3) {
+    if (error3 instanceof Error) {
+      core3.error(`getCheckId: An unexpected error has occurred: ${error3.message}`);
+      error3.stack && core3.debug(error3.stack);
+    }
+    throw error3;
+  }
+}
 async function getRunState(runId, runType) {
   try {
     let response;
@@ -11175,6 +11204,7 @@ async function getRunState(runId, runType) {
     core3.debug(`Fetched Run:
   Repository: ${github.context.repo.owner}/${github.context.repo.repo}
   Run ID: ${runId}
+  Run Type: ${runType === 1 /* CheckRun */ ? "Check" : "Workflow"}
   Status: ${response.data.status}
   Conclusion: ${response.data.conclusion}`);
     return {
@@ -11236,30 +11266,68 @@ async function run() {
     await sleep(INITIAL_WAIT_MS);
     const workflowId = await getWorkflowId(config2.workflow);
     let workflowRunId;
+    let checkSuiteId;
+    let checkRunId;
+    let checkRunStatus;
     while (elapsedTime < timeoutMs) {
       attemptNo++;
       elapsedTime = Date.now() - startTime;
       if (workflowRunId === void 0) {
-        workflowRunId = await getWorkflowRunId(workflowId);
+        const workflowRun = await getWorkflowRun(workflowId);
+        workflowRunId = workflowRun == null ? void 0 : workflowRun.id;
+        checkSuiteId = workflowRun == null ? void 0 : workflowRun.checkSuiteId;
       }
-      if (workflowRunId !== void 0) {
-        const workflowRunStatus = await getRunStatus(workflowRunId, 0 /* WorkflowRun */);
-        if (workflowRunStatus.completed) {
-          const conclusion = workflowRunStatus.conclusion;
-          const completionMsg = `Workflow Run Completed:
-  Run ID: ${workflowRunId}
-  Elapsed Time: ${getElapsedTime(startTime, Date.now())}
-  Conclusion: ${conclusion}`;
-          if (conclusion !== "success" /* Success */) {
-            core4.error(completionMsg);
-            core4.setFailed(`Workflow ${config2.workflow} (${workflowId}) has not completed successfully: ${conclusion}.`);
-          } else {
-            core4.info(completionMsg);
-          }
+      if (config2.checkName && checkRunId === void 0 && checkSuiteId !== void 0) {
+        checkRunId = await getCheckId(checkSuiteId, config2.checkName);
+      }
+      if (checkRunStatus !== void 0) {
+        if (await checkRunStatus()) {
           return;
         }
+      } else if (workflowRunId !== void 0) {
+        if (checkRunStatus === void 0) {
+          if (checkRunId !== void 0) {
+            checkRunStatus = async () => {
+              const runStatus = await getRunStatus(checkRunId, 1 /* CheckRun */);
+              if (runStatus.completed) {
+                const conclusion = runStatus.conclusion;
+                const completionMsg = `Check Run Completed:
+  Check Run ID: ${checkRunId}
+  Elapsed Time: ${getElapsedTime(startTime, Date.now())}
+  Conclusion: ${conclusion}`;
+                if (conclusion !== "success" /* Success */) {
+                  core4.error(completionMsg);
+                  core4.setFailed(`Workflow ${config2.workflow} (${workflowId}) has not completed successfully: ${conclusion}.`);
+                } else {
+                  core4.info(completionMsg);
+                }
+                return true;
+              }
+              return false;
+            };
+          } else {
+            checkRunStatus = async () => {
+              const runStatus = await getRunStatus(workflowRunId, 0 /* WorkflowRun */);
+              if (runStatus.completed) {
+                const conclusion = runStatus.conclusion;
+                const completionMsg = `Workflow Run Completed:
+  Workflow Run ID: ${workflowRunId}
+  Elapsed Time: ${getElapsedTime(startTime, Date.now())}
+  Conclusion: ${conclusion}`;
+                if (conclusion !== "success" /* Success */) {
+                  core4.error(completionMsg);
+                  core4.setFailed(`Workflow ${config2.workflow} (${workflowId}) has not completed successfully: ${conclusion}.`);
+                } else {
+                  core4.info(completionMsg);
+                }
+                return true;
+              }
+              return false;
+            };
+          }
+        }
       } else {
-        core4.debug("Workflow Run ID has not been discovered yet...");
+        core4.debug("Run ID has not been discovered yet...");
       }
       core4.debug(`Run has not concluded, attempt ${attemptNo}...
 `);

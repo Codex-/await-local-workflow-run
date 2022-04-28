@@ -317,6 +317,7 @@ export async function getRunState(
       `Fetched Run:\n` +
         `  Repository: ${github.context.repo.owner}/${github.context.repo.repo}\n` +
         `  Run ID: ${runId}\n` +
+        `  Run Type: ${runType === RunType.CheckRun ? "Check" : "Workflow"}\n` +
         `  Status: ${response.data.status}\n` +
         `  Conclusion: ${response.data.conclusion}`
     );
