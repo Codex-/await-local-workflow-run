@@ -4,7 +4,7 @@ const config: Config.InitialOptions = {
   clearMocks: true,
   globals: {
     "ts-jest": {
-      tsconfig: "tsconfig.test.json",
+      tsconfig: "tsconfig.json",
     },
   },
   moduleFileExtensions: ["js", "ts"],
