@@ -2,7 +2,7 @@ import * as core from "@actions/core";
 import * as github from "@actions/github";
 import type { GitHub } from "@actions/github/lib/utils";
 import { ActionConfig, getConfig } from "./action";
-import { getBranchName, getOffsetRange } from "./utils";
+import { getBranchName, getHeadSha, getOffsetRange, getRef } from "./utils";
 
 type Octokit = InstanceType<typeof GitHub>;
 
@@ -117,9 +117,7 @@ export async function getWorkflowRuns(
   tryUseBranch = false
 ): Promise<WorkflowRun[]> {
   try {
-    const branchName = tryUseBranch
-      ? getBranchName(github.context.ref)
-      : undefined;
+    const branchName = tryUseBranch ? getBranchName(getRef()) : undefined;
 
     // https://docs.github.com/en/rest/reference/actions#list-workflow-runs
     const response = await octokit.rest.actions.listWorkflowRuns({
@@ -145,7 +143,7 @@ export async function getWorkflowRuns(
     }
 
     const runs: WorkflowRun[] = response.data.workflow_runs
-      .filter((workflowRun) => workflowRun.head_sha === github.context.sha)
+      .filter((workflowRun) => workflowRun.head_sha === getHeadSha())
       .map((workflowRun) => ({
         id: workflowRun.id,
         attempt: workflowRun.run_attempt || 0,
@@ -174,7 +172,7 @@ export async function getWorkflowRuns(
       "Fetched Workflow Runs:\n" +
         `  Repository: ${github.context.repo.owner}/${github.context.repo.repo}\n` +
         `  Workflow ID: ${workflowId}\n` +
-        `  Triggering SHA: ${github.context.sha}\n` +
+        `  Triggering SHA: ${getHeadSha()}\n` +
         `  Runs Fetched: [${runs.map(
           (run) => `${run.id} (Attempt ${run.attempt})`
         )}]`

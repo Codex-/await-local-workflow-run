@@ -1,4 +1,6 @@
 import * as core from "@actions/core";
+import * as github from "@actions/github";
+import type { PullRequestEvent } from "@octokit/webhooks-types";
 import { DateTime, Duration } from "luxon";
 
 function getBranchNameFromRef(ref: string): string | undefined {
@@ -30,9 +32,29 @@ export function getBranchName(ref: string): string | undefined {
         `failed to get branch for ref: ${ref}, please raise an issue with this git ref.`
       );
     }
+  } else {
+    core.debug(`Unable to filter branch, unsupported ref: ${ref}`);
   }
 
   return branchName;
+}
+
+export function getHeadSha(): string {
+  if (github.context.eventName === "pull_request") {
+    const pullRequestPayload = github.context.payload as PullRequestEvent;
+    return pullRequestPayload.pull_request.head.sha;
+  }
+
+  return github.context.sha;
+}
+
+export function getRef(): string {
+  if (github.context.eventName === "pull_request") {
+    const pullRequestPayload = github.context.payload as PullRequestEvent;
+    return pullRequestPayload.pull_request.head.ref;
+  }
+
+  return github.context.ref;
 }
 
 /**

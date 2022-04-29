@@ -6101,8 +6101,8 @@ var require_dist_node2 = __commonJS({
     function isKeyOperator(operator) {
       return operator === ";" || operator === "&" || operator === "?";
     }
-    function getValues(context2, operator, key, modifier) {
-      var value = context2[key], result = [];
+    function getValues(context3, operator, key, modifier) {
+      var value = context3[key], result = [];
       if (isDefined(value) && value !== "") {
         if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
           value = value.toString();
@@ -6162,7 +6162,7 @@ var require_dist_node2 = __commonJS({
         expand: expand.bind(null, template)
       };
     }
-    function expand(template, context2) {
+    function expand(template, context3) {
       var operators = ["+", "#", ".", "/", ";", "?", "&"];
       return template.replace(/\{([^\{\}]+)\}|([^\{\}]+)/g, function(_, expression, literal) {
         if (expression) {
@@ -6174,7 +6174,7 @@ var require_dist_node2 = __commonJS({
           }
           expression.split(/,/g).forEach(function(variable) {
             var tmp = /([^:\*]*)(?::(\d+)|(\*))?/.exec(variable);
-            values.push(getValues(context2, operator, tmp[1], tmp[2] || tmp[3]));
+            values.push(getValues(context3, operator, tmp[1], tmp[2] || tmp[3]));
           });
           if (operator && operator !== "+") {
             var separator = ",";
@@ -11000,10 +11000,11 @@ function getNumberFromValue(value) {
 
 // src/api.ts
 var core3 = __toESM(require_core());
-var github = __toESM(require_github());
+var github2 = __toESM(require_github());
 
 // src/utils.ts
 var core2 = __toESM(require_core());
+var github = __toESM(require_github());
 var import_luxon = __toESM(require_luxon());
 function getBranchNameFromRef(ref) {
   const refItems = ref.split(/\/?refs\/heads\//);
@@ -11024,8 +11025,24 @@ function getBranchName(ref) {
     } else {
       core2.warning(`failed to get branch for ref: ${ref}, please raise an issue with this git ref.`);
     }
+  } else {
+    core2.debug(`Unable to filter branch, unsupported ref: ${ref}`);
   }
   return branchName;
+}
+function getHeadSha() {
+  if (github.context.eventName === "pull_request") {
+    const pullRequestPayload = github.context.payload;
+    return pullRequestPayload.pull_request.head.sha;
+  }
+  return github.context.sha;
+}
+function getRef() {
+  if (github.context.eventName === "pull_request") {
+    const pullRequestPayload = github.context.payload;
+    return pullRequestPayload.pull_request.head.ref;
+  }
+  return github.context.ref;
 }
 function getOffsetRange(daysBefore) {
   if (daysBefore < 1) {
@@ -11047,7 +11064,7 @@ var config;
 var octokit;
 function init(cfg) {
   config = cfg || getConfig();
-  octokit = github.getOctokit(config.token);
+  octokit = github2.getOctokit(config.token);
 }
 function sanitiseWorkflowPath(workflowPath) {
   return workflowPath.replace(/\.github\/workflows\//i, "");
@@ -11055,8 +11072,8 @@ function sanitiseWorkflowPath(workflowPath) {
 async function getWorkflowId(workflowFilename) {
   try {
     const response = await octokit.rest.actions.listRepoWorkflows({
-      owner: github.context.repo.owner,
-      repo: github.context.repo.repo
+      owner: github2.context.repo.owner,
+      repo: github2.context.repo.repo
     });
     if (response.status !== 200) {
       throw new Error(`Failed to get Workflows, expected 200 but received ${response.status}`);
@@ -11067,7 +11084,7 @@ async function getWorkflowId(workflowFilename) {
     ]));
     const workflowsWithIds = response.data.workflows.map((workflow) => `${sanitiseWorkflowPath(workflow.path)} (${workflow.id})`);
     core3.debug(`Fetched Workflows:
-  Repository: ${github.context.repo.owner}/${github.context.repo.repo}
+  Repository: ${github2.context.repo.owner}/${github2.context.repo.repo}
   Total Workflows: ${response.data.total_count}
   Workflows: [${workflowsWithIds}]`);
     const id = workflowsIdsMap[workflowFilename];
@@ -11101,10 +11118,10 @@ async function getWorkflowRun(workflowId) {
 }
 async function getWorkflowRuns(workflowId, tryUseBranch = false) {
   try {
-    const branchName = tryUseBranch ? getBranchName(github.context.ref) : void 0;
+    const branchName = tryUseBranch ? getBranchName(getRef()) : void 0;
     const response = await octokit.rest.actions.listWorkflowRuns(__spreadValues({
-      owner: github.context.repo.owner,
-      repo: github.context.repo.repo,
+      owner: github2.context.repo.owner,
+      repo: github2.context.repo.repo,
       workflow_id: workflowId,
       exclude_pull_requests: true
     }, branchName ? {
@@ -11117,7 +11134,7 @@ async function getWorkflowRuns(workflowId, tryUseBranch = false) {
     if (response.status !== 200) {
       throw new Error(`Failed to get Workflow runs, expected 200 but received ${response.status}`);
     }
-    const runs = response.data.workflow_runs.filter((workflowRun) => workflowRun.head_sha === github.context.sha).map((workflowRun) => ({
+    const runs = response.data.workflow_runs.filter((workflowRun) => workflowRun.head_sha === getHeadSha()).map((workflowRun) => ({
       id: workflowRun.id,
       attempt: workflowRun.run_attempt || 0,
       checkSuiteId: workflowRun.check_suite_id,
@@ -11135,9 +11152,9 @@ async function getWorkflowRuns(workflowId, tryUseBranch = false) {
       });
     }
     core3.debug(`Fetched Workflow Runs:
-  Repository: ${github.context.repo.owner}/${github.context.repo.repo}
+  Repository: ${github2.context.repo.owner}/${github2.context.repo.repo}
   Workflow ID: ${workflowId}
-  Triggering SHA: ${github.context.sha}
+  Triggering SHA: ${getHeadSha()}
   Runs Fetched: [${runs.map((run2) => `${run2.id} (Attempt ${run2.attempt})`)}]`);
     return runs;
   } catch (error3) {
@@ -11151,8 +11168,8 @@ async function getWorkflowRuns(workflowId, tryUseBranch = false) {
 async function getCheckId(checkSuiteId, checkName) {
   try {
     const response = await octokit.rest.checks.listForSuite({
-      owner: github.context.repo.owner,
-      repo: github.context.repo.repo,
+      owner: github2.context.repo.owner,
+      repo: github2.context.repo.repo,
       check_suite_id: checkSuiteId
     });
     if (response.status !== 200) {
@@ -11161,7 +11178,7 @@ async function getCheckId(checkSuiteId, checkName) {
     const checkIdsMap = Object.fromEntries(response.data.check_runs.map((check) => [check.name, check.id]));
     const checksWithIds = response.data.check_runs.map((check) => `${check.name} (${check.id})`);
     core3.debug(`Fetched Checks:
-  Repository: ${github.context.repo.owner}/${github.context.repo.repo}
+  Repository: ${github2.context.repo.owner}/${github2.context.repo.repo}
   Total Checks: ${response.data.total_count}
   Checks: [${checksWithIds}]`);
     const id = checkIdsMap[checkName];
@@ -11183,15 +11200,15 @@ async function getRunState(runId, runType) {
     switch (runType) {
       case 0 /* WorkflowRun */:
         response = await octokit.rest.actions.getWorkflowRun({
-          owner: github.context.repo.owner,
-          repo: github.context.repo.repo,
+          owner: github2.context.repo.owner,
+          repo: github2.context.repo.repo,
           run_id: runId
         });
         break;
       case 1 /* CheckRun */:
         response = await octokit.rest.checks.get({
-          owner: github.context.repo.owner,
-          repo: github.context.repo.repo,
+          owner: github2.context.repo.owner,
+          repo: github2.context.repo.repo,
           check_run_id: runId
         });
         break;
@@ -11202,7 +11219,7 @@ async function getRunState(runId, runType) {
       throw new Error(`Failed to get run state, expected 200 but received ${response.status}`);
     }
     core3.debug(`Fetched Run:
-  Repository: ${github.context.repo.owner}/${github.context.repo.repo}
+  Repository: ${github2.context.repo.owner}/${github2.context.repo.repo}
   Run ID: ${runId}
   Run Type: ${runType === 1 /* CheckRun */ ? "Check" : "Workflow"}
   Status: ${response.data.status}

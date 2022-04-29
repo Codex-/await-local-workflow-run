@@ -1,5 +1,13 @@
+import * as github from "@actions/github";
 import { DateTime } from "luxon";
-import { getBranchName, getElapsedTime, getOffsetRange, sleep } from "./utils";
+import {
+  getBranchName,
+  getElapsedTime,
+  getHeadSha,
+  getOffsetRange,
+  getRef,
+  sleep,
+} from "./utils";
 
 describe("utils", () => {
   describe("getBranchNameFromRef", () => {
@@ -35,6 +43,69 @@ describe("utils", () => {
       const branch = getBranchName("refs/tags/");
 
       expect(branch).toBeUndefined();
+    });
+  });
+
+  describe("getHeadSha", () => {
+    const mockSha = "1234567890123456789012345678901234567890";
+
+    beforeEach(() => {
+      github.context.eventName = "push";
+      github.context.sha = mockSha;
+    });
+
+    it("should return a sha from the github context", () => {
+      const sha = getHeadSha();
+
+      expect(sha).toStrictEqual(mockSha);
+    });
+
+    it("should return a sha from the github payload if the event is a pull request", () => {
+      github.context.eventName = "pull_request";
+      const payload = {
+        head: {
+          sha: "prsha",
+        },
+      };
+      (github.context as any).payload = {
+        pull_request: payload,
+      };
+
+      const sha = getHeadSha();
+
+      expect(sha).toStrictEqual(payload.head.sha);
+    });
+  });
+
+  describe("getRef", () => {
+    const mockRef = "/refs/heads/cool_branch";
+
+    beforeEach(() => {
+      github.context.eventName = "push";
+      github.context.ref = mockRef;
+    });
+
+    it("should return a ref from the github context", () => {
+      const ref = getRef();
+
+      expect(ref).toStrictEqual(mockRef);
+    });
+
+    it("should return a ref from the github payload if the event is a pull request", () => {
+      github.context.ref = "refs/pull/2081/merge";
+      github.context.eventName = "pull_request";
+      const payload = {
+        head: {
+          ref: "/refs/heads/actual_ref",
+        },
+      };
+      (github.context as any).payload = {
+        pull_request: payload,
+      };
+
+      const ref = getRef();
+
+      expect(ref).toStrictEqual(payload.head.ref);
     });
   });
 
