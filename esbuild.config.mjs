@@ -1,6 +1,5 @@
 import chalk from "chalk";
 import { analyzeMetafile, build } from "esbuild";
-import { Duration } from "luxon";
 
 (async () => {
   try {
