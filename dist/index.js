@@ -6139,7 +6139,8 @@ var INITIAL_WAIT_MS = 10 * 1e3;
 async function run() {
   const pullRequestPayload = import_github.context.payload;
   pullRequestPayload.pull_request.head.ref;
-  console.log(JSON.stringify(pullRequestPayload.pull_request.head.ref));
+  console.log(JSON.stringify(pullRequestPayload));
+  console.log(JSON.stringify(pullRequestPayload.pull_request));
   return;
 }
 (() => run())();

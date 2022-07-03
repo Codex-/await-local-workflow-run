@@ -19,7 +19,8 @@ const INITIAL_WAIT_MS = 10 * 1000; // 10 seconds
 async function run(): Promise<void> {
   const pullRequestPayload = context.payload as PullRequestEvent;
   pullRequestPayload.pull_request.head.ref;
-  console.log(JSON.stringify(pullRequestPayload.pull_request.head.ref));
+  console.log(JSON.stringify(pullRequestPayload));
+  console.log(JSON.stringify(pullRequestPayload.pull_request));
   return;
 
   // try {
