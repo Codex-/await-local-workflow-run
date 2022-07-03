@@ -128,6 +128,10 @@ async function run(): Promise<void> {
 
       await sleep(config.pollIntervalMs);
     }
+
+    throw new Error(
+      "Timeout exceeded while attempting to await local workflow run"
+    );
   } catch (error) {
     if (error instanceof Error) {
       core.error(`Failed: ${error.message}`);
