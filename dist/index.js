@@ -11259,7 +11259,12 @@ function getBranchNameFromRef(ref) {
 function isTagRef(ref) {
   return new RegExp(/\/?refs\/tags\//).test(ref);
 }
-function getBranchName(ref) {
+function getBranchName() {
+  if (github.context.eventName === "pull_request") {
+    const pullRequestPayload = github.context.payload;
+    return pullRequestPayload.pull_request.head.ref;
+  }
+  const ref = github.context.ref;
   let branchName;
   if (!isTagRef(ref)) {
     const branch = getBranchNameFromRef(ref);
@@ -11280,13 +11285,6 @@ function getHeadSha() {
     return pullRequestPayload.pull_request.head.sha;
   }
   return github.context.sha;
-}
-function getRef() {
-  if (github.context.eventName === "pull_request") {
-    const pullRequestPayload = github.context.payload;
-    return pullRequestPayload.pull_request.head.ref;
-  }
-  return github.context.ref;
 }
 function getOffsetRange(daysBefore) {
   if (daysBefore < 1) {
@@ -11362,7 +11360,7 @@ async function getWorkflowRun(workflowId) {
 }
 async function getWorkflowRuns(workflowId, tryUseBranch = false) {
   try {
-    const branchName = tryUseBranch ? getBranchName(getRef()) : void 0;
+    const branchName = tryUseBranch ? getBranchName() : void 0;
     const response = await octokit.rest.actions.listWorkflowRuns({
       owner: github2.context.repo.owner,
       repo: github2.context.repo.repo,

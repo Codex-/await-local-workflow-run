@@ -14,7 +14,15 @@ function isTagRef(ref: string): boolean {
   return new RegExp(/\/?refs\/tags\//).test(ref);
 }
 
-export function getBranchName(ref: string): string | undefined {
+export function getBranchName(): string | undefined {
+  // If this is run in a PR we can access the event for this and get the branch directly.
+  if (github.context.eventName === "pull_request") {
+    const pullRequestPayload = github.context.payload as PullRequestEvent;
+    // The ref is actually just the branch name, not a proper ref.
+    return pullRequestPayload.pull_request.head.ref;
+  }
+
+  const ref = github.context.ref;
   let branchName;
   if (!isTagRef(ref)) {
     /**
@@ -46,15 +54,6 @@ export function getHeadSha(): string {
   }
 
   return github.context.sha;
-}
-
-export function getRef(): string {
-  if (github.context.eventName === "pull_request") {
-    const pullRequestPayload = github.context.payload as PullRequestEvent;
-    return pullRequestPayload.pull_request.head.ref;
-  }
-
-  return github.context.ref;
 }
 
 /**

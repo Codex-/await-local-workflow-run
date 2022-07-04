@@ -1,48 +1,78 @@
 import * as github from "@actions/github";
+import { WebhookPayload } from "@actions/github/lib/interfaces";
 import { DateTime } from "luxon";
 import {
   getBranchName,
   getElapsedTime,
   getHeadSha,
   getOffsetRange,
-  getRef,
   sleep,
 } from "./utils";
 
 describe("utils", () => {
   describe("getBranchNameFromRef", () => {
+    let originalRef: string;
+    let originalEventName: string;
+    let originalPayload: WebhookPayload;
+
+    beforeEach(() => {
+      originalRef = github.context.ref;
+      originalEventName = github.context.eventName;
+      originalPayload = github.context.payload;
+    });
+
+    afterEach(() => {
+      github.context.ref = originalRef;
+      github.context.eventName = originalEventName;
+      github.context.payload = originalPayload;
+    });
+
     it("should return the branch name for a valid branch ref", () => {
       const branchName = "cool_feature";
-      const ref = `/refs/heads/${branchName}`;
-      const branch = getBranchName(ref);
+      github.context.ref = `/refs/heads/${branchName}`;
 
-      expect(branch).toStrictEqual(branchName);
+      expect(getBranchName()).toStrictEqual(branchName);
     });
 
     it("should return the branch name for a valid branch ref without a leading slash", () => {
       const branchName = "cool_feature";
-      const ref = `refs/heads/${branchName}`;
-      const branch = getBranchName(ref);
+      github.context.ref = `refs/heads/${branchName}`;
 
-      expect(branch).toStrictEqual(branchName);
+      expect(getBranchName()).toStrictEqual(branchName);
     });
 
     it("should return undefined for an invalid branch ref", () => {
-      const branch = getBranchName("refs/heads/");
+      github.context.ref = "refs/heads/";
 
-      expect(branch).toBeUndefined();
+      expect(getBranchName()).toBeUndefined();
     });
 
     it("should return undefined if the ref is for a tag", () => {
-      const branch = getBranchName("refs/tags/v1.0.1");
+      github.context.ref = "refs/tags/v1.0.1";
 
-      expect(branch).toBeUndefined();
+      expect(getBranchName()).toBeUndefined();
     });
 
     it("should return undefined if the ref is for an invalid tag", () => {
-      const branch = getBranchName("refs/tags/");
+      github.context.ref = "refs/tags/";
 
-      expect(branch).toBeUndefined();
+      expect(getBranchName()).toBeUndefined();
+    });
+
+    it("should return a ref from the github payload if the event is a pull request", () => {
+      const branchName = "cool_feature";
+      github.context.ref = "refs/pull/2081/merge";
+      github.context.eventName = "pull_request";
+      github.context.payload = {
+        pull_request: {
+          number: 0,
+          head: {
+            ref: branchName,
+          },
+        },
+      };
+
+      expect(getBranchName()).toStrictEqual(branchName);
     });
   });
 
@@ -74,38 +104,6 @@ describe("utils", () => {
       const sha = getHeadSha();
 
       expect(sha).toStrictEqual(payload.head.sha);
-    });
-  });
-
-  describe("getRef", () => {
-    const mockRef = "/refs/heads/cool_branch";
-
-    beforeEach(() => {
-      github.context.eventName = "push";
-      github.context.ref = mockRef;
-    });
-
-    it("should return a ref from the github context", () => {
-      const ref = getRef();
-
-      expect(ref).toStrictEqual(mockRef);
-    });
-
-    it("should return a ref from the github payload if the event is a pull request", () => {
-      github.context.ref = "refs/pull/2081/merge";
-      github.context.eventName = "pull_request";
-      const payload = {
-        head: {
-          ref: "/refs/heads/actual_ref",
-        },
-      };
-      (github.context as any).payload = {
-        pull_request: payload,
-      };
-
-      const ref = getRef();
-
-      expect(ref).toStrictEqual(payload.head.ref);
     });
   });
 

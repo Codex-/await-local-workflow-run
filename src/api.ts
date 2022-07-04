@@ -2,7 +2,7 @@ import * as core from "@actions/core";
 import * as github from "@actions/github";
 import type { GitHub } from "@actions/github/lib/utils";
 import { ActionConfig, getConfig } from "./action";
-import { getBranchName, getHeadSha, getOffsetRange, getRef } from "./utils";
+import { getBranchName, getHeadSha, getOffsetRange } from "./utils";
 
 type Octokit = InstanceType<typeof GitHub>;
 
@@ -117,7 +117,7 @@ export async function getWorkflowRuns(
   tryUseBranch = false
 ): Promise<WorkflowRun[]> {
   try {
-    const branchName = tryUseBranch ? getBranchName(getRef()) : undefined;
+    const branchName = tryUseBranch ? getBranchName() : undefined;
 
     // https://docs.github.com/en/rest/reference/actions#list-workflow-runs
     const response = await octokit.rest.actions.listWorkflowRuns({
