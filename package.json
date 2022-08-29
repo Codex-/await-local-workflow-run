@@ -28,7 +28,7 @@
     "@actions/core": "^1.9.1",
     "@actions/github": "^5.0.3",
     "@octokit/webhooks-types": "^6.2.4",
-    "luxon": "^3.0.1"
+    "luxon": "^3.0.3"
   },
   "devDependencies": {
     "@types/jest": "^28.1.6",
