@@ -1,5 +1,8 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as core from "@actions/core";
 import { ActionConfig, getConfig } from "./action";
+
+vi.mock("@actions/core");
 
 describe("Action", () => {
   describe("getConfig", () => {
@@ -15,7 +18,7 @@ describe("Action", () => {
         poll_interval_ms: "5000",
       };
 
-      jest.spyOn(core, "getInput").mockImplementation((input: string) => {
+      vi.spyOn(core, "getInput").mockImplementation((input: string) => {
         switch (input) {
           case "token":
             return mockEnvConfig.token;
@@ -34,7 +37,7 @@ describe("Action", () => {
     });
 
     afterEach(() => {
-      jest.restoreAllMocks();
+      vi.restoreAllMocks();
     });
 
     it("should return a valid config", () => {

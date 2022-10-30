@@ -1,3 +1,23 @@
+import type { Context } from "@actions/github/lib/context";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  SpyInstance,
+  vi,
+} from "vitest";
+
+vi.mock("@actions/core");
+let mockedContext: Context = {} as any;
+vi.mock("@actions/github", () => ({
+  get context() {
+    return mockedContext;
+  },
+  getOctokit: vi.fn(),
+}));
+
 import * as core from "@actions/core";
 import * as github from "@actions/github";
 import {
@@ -48,23 +68,37 @@ describe("API", () => {
   const mockRef = `refs/heads/${mockBranchName}`;
   const mockSha = "1234567890123456789012345678901234567890";
 
-  beforeEach(() => {
-    jest.spyOn(core, "getInput").mockReturnValue("");
-    jest.spyOn(github, "getOctokit").mockReturnValue(mockOctokit as any);
-    jest.spyOn(github.context, "repo", "get").mockImplementation(() => {
-      return {
-        owner: "rich-clown",
-        repo: "circus",
-      };
+  /* eslint-disable no-redeclare */
+  function mockContextProp(prop: "ref", value: string): void;
+  function mockContextProp(prop: "repo", value: Record<string, string>): void;
+  function mockContextProp(prop: "sha", value: string): void;
+  function mockContextProp(
+    prop: "ref" | "repo" | "sha",
+    value: string | Record<string, string>
+  ): void {
+    Object.defineProperty(mockedContext, prop, {
+      value,
+      writable: true,
     });
-    github.context.ref = mockRef;
-    github.context.sha = mockSha;
+  }
+  /* eslint-enable no-redeclare */
+
+  beforeEach(() => {
+    vi.spyOn(core, "getInput").mockReturnValue("");
+    vi.spyOn(github, "getOctokit").mockReturnValue(mockOctokit as any);
+    mockContextProp("ref", mockRef);
+    mockContextProp("repo", {
+      owner: "rich-clown",
+      repo: "circus",
+    });
+    mockContextProp("sha", mockSha);
 
     init();
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    mockedContext = {} as any;
+    vi.restoreAllMocks();
   });
 
   describe("getWorkflowId", () => {
@@ -87,7 +121,7 @@ describe("API", () => {
     };
 
     it("should return the workflow ID for a given workflow filename", async () => {
-      jest.spyOn(mockOctokit.rest.actions, "listRepoWorkflows").mockReturnValue(
+      vi.spyOn(mockOctokit.rest.actions, "listRepoWorkflows").mockReturnValue(
         Promise.resolve({
           data: mockData,
           status: 200,
@@ -101,7 +135,7 @@ describe("API", () => {
 
     it("should throw if a non-200 status is returned", async () => {
       const errorStatus = 401;
-      jest.spyOn(mockOctokit.rest.actions, "listRepoWorkflows").mockReturnValue(
+      vi.spyOn(mockOctokit.rest.actions, "listRepoWorkflows").mockReturnValue(
         Promise.resolve({
           data: undefined,
           status: errorStatus,
@@ -115,7 +149,7 @@ describe("API", () => {
 
     it("should throw if a given workflow name cannot be found in the response", async () => {
       const workflowName = "spoon";
-      jest.spyOn(mockOctokit.rest.actions, "listRepoWorkflows").mockReturnValue(
+      vi.spyOn(mockOctokit.rest.actions, "listRepoWorkflows").mockReturnValue(
         Promise.resolve({
           data: mockData,
           status: 200,
@@ -134,7 +168,7 @@ describe("API", () => {
 
     it("should throw if the response returns no workflows", async () => {
       const workflowName = "slice";
-      jest.spyOn(mockOctokit.rest.actions, "listRepoWorkflows").mockReturnValue(
+      vi.spyOn(mockOctokit.rest.actions, "listRepoWorkflows").mockReturnValue(
         Promise.resolve({
           data: {
             total_count: 0,
@@ -165,7 +199,7 @@ describe("API", () => {
           status: RunStatus.InProgress,
         },
       ];
-      jest.spyOn(mockOctokit.rest.actions, "listWorkflowRuns").mockReturnValue(
+      vi.spyOn(mockOctokit.rest.actions, "listWorkflowRuns").mockReturnValue(
         Promise.resolve({
           data: {
             total_count: mockWorkflowRunsApiData.length,
@@ -194,7 +228,7 @@ describe("API", () => {
           status: RunStatus.InProgress,
         },
       ];
-      jest.spyOn(mockOctokit.rest.actions, "listWorkflowRuns").mockReturnValue(
+      vi.spyOn(mockOctokit.rest.actions, "listWorkflowRuns").mockReturnValue(
         Promise.resolve({
           data: {
             total_count: mockWorkflowRunsApiData.length,
@@ -218,7 +252,7 @@ describe("API", () => {
           status: RunStatus.InProgress,
         },
       ];
-      const listWorkflowRunsSpy = jest
+      const listWorkflowRunsSpy = vi
         .spyOn(mockOctokit.rest.actions, "listWorkflowRuns")
         .mockReturnValueOnce(
           Promise.resolve({
@@ -339,13 +373,10 @@ describe("API", () => {
       workflow_runs: mockWorkflowRunsApiData,
     };
 
-    let listWorkflowRunsSpy: jest.SpyInstance<
-      Promise<MockResponse>,
-      [_req?: any]
-    >;
+    let listWorkflowRunsSpy: SpyInstance<[_req?: any], Promise<MockResponse>>;
 
     beforeEach(() => {
-      listWorkflowRunsSpy = jest
+      listWorkflowRunsSpy = vi
         .spyOn(mockOctokit.rest.actions, "listWorkflowRuns")
         .mockReturnValue(
           Promise.resolve({
@@ -356,7 +387,7 @@ describe("API", () => {
     });
 
     afterEach(() => {
-      jest.resetAllMocks();
+      vi.resetAllMocks();
     });
 
     it("should get the run IDs for a given workflow ID filtered by the commit sha", async () => {
@@ -450,7 +481,7 @@ describe("API", () => {
     });
 
     it("should return no runs if there are no sha matches", async () => {
-      github.context.sha = "ganon";
+      mockContextProp("sha", "ganon");
 
       const workflowRuns = await getWorkflowRuns(0);
 
@@ -460,7 +491,7 @@ describe("API", () => {
     it("should throw if a non-200 status is returned", async () => {
       listWorkflowRunsSpy.mockRestore();
       const errorStatus = 401;
-      jest.spyOn(mockOctokit.rest.actions, "listWorkflowRuns").mockReturnValue(
+      vi.spyOn(mockOctokit.rest.actions, "listWorkflowRuns").mockReturnValue(
         Promise.resolve({
           data: undefined,
           status: errorStatus,
@@ -475,7 +506,7 @@ describe("API", () => {
     it("should return an empty array if there are no runs", async () => {
       listWorkflowRunsSpy.mockRestore();
 
-      jest.spyOn(mockOctokit.rest.actions, "listWorkflowRuns").mockReturnValue(
+      vi.spyOn(mockOctokit.rest.actions, "listWorkflowRuns").mockReturnValue(
         Promise.resolve({
           data: {
             total_count: 0,
@@ -489,7 +520,7 @@ describe("API", () => {
     });
 
     it("should not use the branch field if the ref is for a tag", async () => {
-      github.context.ref = "/refs/tags/1.5.0";
+      mockContextProp("ref", "/refs/tags/1.5.0");
       (await getWorkflowRuns(0, true))[0];
       const requestObj = listWorkflowRunsSpy.mock.calls[0][0];
 
@@ -505,7 +536,7 @@ describe("API", () => {
           name: "ganon",
         },
       ];
-      jest.spyOn(mockOctokit.rest.checks, "listForSuite").mockReturnValue(
+      vi.spyOn(mockOctokit.rest.checks, "listForSuite").mockReturnValue(
         Promise.resolve({
           data: {
             total_count: mockCheckRunsApiData.length,
@@ -526,7 +557,7 @@ describe("API", () => {
           name: "ganon",
         },
       ];
-      jest.spyOn(mockOctokit.rest.checks, "listForSuite").mockReturnValue(
+      vi.spyOn(mockOctokit.rest.checks, "listForSuite").mockReturnValue(
         Promise.resolve({
           data: {
             total_count: mockCheckRunsApiData.length,
@@ -543,7 +574,7 @@ describe("API", () => {
 
     it("should throw if a non-200 status is returned", async () => {
       const errorStatus = 401;
-      jest.spyOn(mockOctokit.rest.checks, "listForSuite").mockReturnValue(
+      vi.spyOn(mockOctokit.rest.checks, "listForSuite").mockReturnValue(
         Promise.resolve({
           data: undefined,
           status: errorStatus,
@@ -569,7 +600,7 @@ describe("API", () => {
           status: RunStatus.Completed,
           conclusion: RunConclusion.Cancelled,
         };
-        jest.spyOn(mockOctokit.rest.actions, "getWorkflowRun").mockReturnValue(
+        vi.spyOn(mockOctokit.rest.actions, "getWorkflowRun").mockReturnValue(
           Promise.resolve({
             data: mockData,
             status: 200,
@@ -583,7 +614,7 @@ describe("API", () => {
 
       it("should throw if a non-200 status is returned", async () => {
         const errorStatus = 401;
-        jest.spyOn(mockOctokit.rest.actions, "getWorkflowRun").mockReturnValue(
+        vi.spyOn(mockOctokit.rest.actions, "getWorkflowRun").mockReturnValue(
           Promise.resolve({
             data: undefined,
             status: errorStatus,
@@ -602,7 +633,7 @@ describe("API", () => {
           status: RunStatus.Completed,
           conclusion: RunConclusion.Cancelled,
         };
-        jest.spyOn(mockOctokit.rest.actions, "getWorkflowRun").mockReturnValue(
+        vi.spyOn(mockOctokit.rest.actions, "getWorkflowRun").mockReturnValue(
           Promise.resolve({
             data: mockData,
             status: 200,
@@ -616,7 +647,7 @@ describe("API", () => {
 
       it("should throw if a non-200 status is returned", async () => {
         const errorStatus = 401;
-        jest.spyOn(mockOctokit.rest.actions, "getWorkflowRun").mockReturnValue(
+        vi.spyOn(mockOctokit.rest.actions, "getWorkflowRun").mockReturnValue(
           Promise.resolve({
             data: undefined,
             status: errorStatus,
@@ -637,7 +668,7 @@ describe("API", () => {
           status: RunStatus.Completed,
           conclusion: RunConclusion.Cancelled,
         };
-        jest.spyOn(mockOctokit.rest.actions, "getWorkflowRun").mockReturnValue(
+        vi.spyOn(mockOctokit.rest.actions, "getWorkflowRun").mockReturnValue(
           Promise.resolve({
             data: mockData,
             status: 200,
@@ -659,15 +690,15 @@ describe("API", () => {
           status: RunStatus.Completed,
           conclusion: RunConclusion.Success,
         };
-        jest.spyOn(mockOctokit.rest.actions, "getWorkflowRun").mockReturnValue(
+        vi.spyOn(mockOctokit.rest.actions, "getWorkflowRun").mockReturnValue(
           Promise.resolve({
             data: mockData,
             status: 200,
           })
         );
-        const coreSetFailedSpy = jest
+        const coreSetFailedSpy = vi
           .spyOn(core, "setFailed")
-          .mockImplementation();
+          .mockImplementation(() => undefined);
 
         await getRunStatus(0, RunType.WorkflowRun);
 
@@ -679,15 +710,15 @@ describe("API", () => {
           status: RunStatus.Completed,
           conclusion: RunConclusion.Failure,
         };
-        jest.spyOn(mockOctokit.rest.actions, "getWorkflowRun").mockReturnValue(
+        vi.spyOn(mockOctokit.rest.actions, "getWorkflowRun").mockReturnValue(
           Promise.resolve({
             data: mockData,
             status: 200,
           })
         );
-        const coreSetFailedSpy = jest
+        const coreSetFailedSpy = vi
           .spyOn(core, "setFailed")
-          .mockImplementation();
+          .mockImplementation(() => undefined);
 
         await getRunStatus(0, RunType.WorkflowRun);
 
@@ -702,15 +733,15 @@ describe("API", () => {
           status: RunStatus.Completed,
           conclusion: unknownStatus,
         };
-        jest.spyOn(mockOctokit.rest.actions, "getWorkflowRun").mockReturnValue(
+        vi.spyOn(mockOctokit.rest.actions, "getWorkflowRun").mockReturnValue(
           Promise.resolve({
             data: mockData,
             status: 200,
           })
         );
-        const coreSetFailedSpy = jest
+        const coreSetFailedSpy = vi
           .spyOn(core, "setFailed")
-          .mockImplementation();
+          .mockImplementation(() => undefined);
 
         await getRunStatus(0, RunType.WorkflowRun);
 
@@ -723,7 +754,7 @@ describe("API", () => {
         const mockData = {
           status: RunStatus.Queued,
         };
-        jest.spyOn(mockOctokit.rest.actions, "getWorkflowRun").mockReturnValue(
+        vi.spyOn(mockOctokit.rest.actions, "getWorkflowRun").mockReturnValue(
           Promise.resolve({
             data: mockData,
             status: 200,
@@ -745,7 +776,7 @@ describe("API", () => {
           status: RunStatus.Completed,
           conclusion: RunConclusion.Cancelled,
         };
-        jest.spyOn(mockOctokit.rest.checks, "get").mockReturnValue(
+        vi.spyOn(mockOctokit.rest.checks, "get").mockReturnValue(
           Promise.resolve({
             data: mockData,
             status: 200,
@@ -767,15 +798,15 @@ describe("API", () => {
           status: RunStatus.Completed,
           conclusion: RunConclusion.Success,
         };
-        jest.spyOn(mockOctokit.rest.checks, "get").mockReturnValue(
+        vi.spyOn(mockOctokit.rest.checks, "get").mockReturnValue(
           Promise.resolve({
             data: mockData,
             status: 200,
           })
         );
-        const coreSetFailedSpy = jest
+        const coreSetFailedSpy = vi
           .spyOn(core, "setFailed")
-          .mockImplementation();
+          .mockImplementation(() => undefined);
 
         await getRunStatus(0, RunType.CheckRun);
 
@@ -787,15 +818,15 @@ describe("API", () => {
           status: RunStatus.Completed,
           conclusion: RunConclusion.Failure,
         };
-        jest.spyOn(mockOctokit.rest.checks, "get").mockReturnValue(
+        vi.spyOn(mockOctokit.rest.checks, "get").mockReturnValue(
           Promise.resolve({
             data: mockData,
             status: 200,
           })
         );
-        const coreSetFailedSpy = jest
+        const coreSetFailedSpy = vi
           .spyOn(core, "setFailed")
-          .mockImplementation();
+          .mockImplementation(() => undefined);
 
         await getRunStatus(0, RunType.CheckRun);
 
@@ -810,15 +841,15 @@ describe("API", () => {
           status: RunStatus.Completed,
           conclusion: unknownStatus,
         };
-        jest.spyOn(mockOctokit.rest.checks, "get").mockReturnValue(
+        vi.spyOn(mockOctokit.rest.checks, "get").mockReturnValue(
           Promise.resolve({
             data: mockData,
             status: 200,
           })
         );
-        const coreSetFailedSpy = jest
+        const coreSetFailedSpy = vi
           .spyOn(core, "setFailed")
-          .mockImplementation();
+          .mockImplementation(() => undefined);
 
         await getRunStatus(0, RunType.CheckRun);
 
@@ -831,7 +862,7 @@ describe("API", () => {
         const mockData = {
           status: RunStatus.Queued,
         };
-        jest.spyOn(mockOctokit.rest.checks, "get").mockReturnValue(
+        vi.spyOn(mockOctokit.rest.checks, "get").mockReturnValue(
           Promise.resolve({
             data: mockData,
             status: 200,
