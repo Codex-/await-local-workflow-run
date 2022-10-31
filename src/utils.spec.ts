@@ -1,5 +1,23 @@
+import type { Context } from "@actions/github/lib/context";
+import {
+  afterAll,
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
+
+let mockedContext: Context = {} as any;
+vi.mock("@actions/github", () => ({
+  get context() {
+    return mockedContext;
+  },
+}));
+
 import * as github from "@actions/github";
-import { WebhookPayload } from "@actions/github/lib/interfaces";
+import type { WebhookPayload } from "@actions/github/lib/interfaces";
 import { DateTime } from "luxon";
 import {
   getBranchName,
@@ -10,67 +28,77 @@ import {
 } from "./utils";
 
 describe("utils", () => {
+  /* eslint-disable no-redeclare */
+  function mockContextProp(prop: "eventName", value: string): void;
+  function mockContextProp(prop: "ref", value: string): void;
+  function mockContextProp(prop: "sha", value: string): void;
+  function mockContextProp(prop: "payload", value: WebhookPayload): void;
+  function mockContextProp(
+    prop: "eventName" | "ref" | "sha" | "payload",
+    value: string | WebhookPayload
+  ): void {
+    Object.defineProperty(mockedContext, prop, {
+      value,
+      writable: true,
+    });
+  }
+  /* eslint-enable no-redeclare */
+
+  afterEach(() => {
+    mockedContext = {} as any;
+  });
+
+  afterAll(() => {
+    vi.restoreAllMocks();
+  });
+
   describe("getBranchNameFromRef", () => {
-    let originalRef: string;
-    let originalEventName: string;
-    let originalPayload: WebhookPayload;
-
-    beforeEach(() => {
-      originalRef = github.context.ref;
-      originalEventName = github.context.eventName;
-      originalPayload = github.context.payload;
-    });
-
-    afterEach(() => {
-      github.context.ref = originalRef;
-      github.context.eventName = originalEventName;
-      github.context.payload = originalPayload;
-    });
-
     it("should return the branch name for a valid branch ref", () => {
       const branchName = "cool_feature";
-      github.context.ref = `/refs/heads/${branchName}`;
+      mockContextProp("ref", `/refs/heads/${branchName}`);
 
       expect(getBranchName()).toStrictEqual(branchName);
     });
 
     it("should return the branch name for a valid branch ref without a leading slash", () => {
       const branchName = "cool_feature";
-      github.context.ref = `refs/heads/${branchName}`;
+      mockContextProp("ref", `refs/heads/${branchName}`);
 
       expect(getBranchName()).toStrictEqual(branchName);
     });
 
     it("should return undefined for an invalid branch ref", () => {
-      github.context.ref = "refs/heads/";
+      mockContextProp("ref", "refs/heads/");
 
       expect(getBranchName()).toBeUndefined();
     });
 
     it("should return undefined if the ref is for a tag", () => {
-      github.context.ref = "refs/tags/v1.0.1";
+      mockContextProp("ref", "refs/tags/v1.0.1");
 
       expect(getBranchName()).toBeUndefined();
     });
 
     it("should return undefined if the ref is for an invalid tag", () => {
-      github.context.ref = "refs/tags/";
+      console.log(github.context.ref);
+      mockContextProp("ref", "refs/tags/");
+      console.log(github.context.ref);
 
       expect(getBranchName()).toBeUndefined();
     });
 
     it("should return a ref from the github payload if the event is a pull request", () => {
       const branchName = "cool_feature";
-      github.context.ref = "refs/pull/2081/merge";
-      github.context.eventName = "pull_request";
-      github.context.payload = {
+      mockContextProp("ref", "refs/pull/2081/merge");
+      mockContextProp("eventName", "pull_request");
+      mockContextProp("payload", {
         pull_request: {
           number: 0,
           head: {
             ref: branchName,
           },
         },
-      };
+      });
 
       expect(getBranchName()).toStrictEqual(branchName);
     });
@@ -80,8 +108,8 @@ describe("utils", () => {
     const mockSha = "1234567890123456789012345678901234567890";
 
     beforeEach(() => {
-      github.context.eventName = "push";
-      github.context.sha = mockSha;
+      mockContextProp("eventName", "push");
+      mockContextProp("sha", mockSha);
     });
 
     it("should return a sha from the github context", () => {
@@ -91,15 +119,16 @@ describe("utils", () => {
     });
 
     it("should return a sha from the github payload if the event is a pull request", () => {
-      github.context.eventName = "pull_request";
+      mockContextProp("eventName", "pull_request");
       const payload = {
         head: {
           sha: "prsha",
         },
+        number: 0,
       };
-      (github.context as any).payload = {
+      mockContextProp("payload", {
         pull_request: payload,
-      };
+      });
 
       const sha = getHeadSha();
 
