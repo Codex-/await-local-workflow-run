@@ -1,5 +1,5 @@
 /// <reference types="vitest" />
-import { ConfigEnv, defineConfig, loadEnv } from "vite";
+import { defineConfig } from "vite";
 
 export default defineConfig({
   test: {
