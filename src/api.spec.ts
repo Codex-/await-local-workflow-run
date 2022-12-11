@@ -1,4 +1,6 @@
 import type { Context } from "@actions/github/lib/context";
+import * as core from "@actions/core";
+import * as github from "@actions/github";
 import {
   afterEach,
   beforeEach,
@@ -9,8 +11,6 @@ import {
   vi,
 } from "vitest";
 
-import * as core from "@actions/core";
-import * as github from "@actions/github";
 import {
   getCheckId,
   getRunState,
@@ -451,32 +451,36 @@ describe("API", () => {
     });
 
     it("should not try to use the branch name by default", async () => {
-      (await getWorkflowRuns(0))[0];
+      const workflowRun = (await getWorkflowRuns(0))[0];
       const requestObj = listWorkflowRunsSpy.mock.calls[0][0];
 
+      expect(workflowRun).toBeDefined();
       expect(requestObj.branch).toBeUndefined();
     });
 
     it("should use the branch name for the request if tryBranchName is true", async () => {
-      (await getWorkflowRuns(0, true))[0];
+      const workflowRun = (await getWorkflowRuns(0, true))[0];
       const requestObj = listWorkflowRunsSpy.mock.calls[0][0];
 
+      expect(workflowRun).toBeDefined();
       expect(requestObj.branch).toStrictEqual(mockBranchName);
     });
 
     it("should use the created field if the branch name is not being used", async () => {
-      (await getWorkflowRuns(0))[0];
-
+      const workflowRun = (await getWorkflowRuns(0))[0];
       const requestObj = listWorkflowRunsSpy.mock.calls[0][0];
+
+      expect(workflowRun).toBeDefined();
       expect(requestObj.created).toBeDefined();
       expect(typeof requestObj.created).toStrictEqual("string");
       expect(requestObj.created !== "").toBeTruthy();
     });
 
     it("should exclude the created field if the branch name is being used", async () => {
-      (await getWorkflowRuns(0, true))[0];
+      const workflowRun = (await getWorkflowRuns(0, true))[0];
       const requestObj = listWorkflowRunsSpy.mock.calls[0][0];
 
+      expect(workflowRun).toBeDefined();
       expect(requestObj.created).toBeUndefined();
     });
 
@@ -521,9 +525,10 @@ describe("API", () => {
 
     it("should not use the branch field if the ref is for a tag", async () => {
       mockContextProp("ref", "/refs/tags/1.5.0");
-      (await getWorkflowRuns(0, true))[0];
+      const workflowRun = (await getWorkflowRuns(0, true))[0];
       const requestObj = listWorkflowRunsSpy.mock.calls[0][0];
 
+      expect(workflowRun).toBeDefined();
       expect(requestObj.branch).toBeUndefined();
     });
   });

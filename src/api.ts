@@ -63,6 +63,7 @@ export async function getWorkflowId(workflowFilename: string): Promise<number> {
       core.error(
         `getWorkflowId: An unexpected error has occurred: ${error.message}`
       );
+      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
       error.stack && core.debug(error.stack);
     }
     throw error;
@@ -184,6 +185,7 @@ export async function getWorkflowRuns(
       core.error(
         `getWorkflowRuns: An unexpected error has occurred: ${error.message}`
       );
+      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
       error.stack && core.debug(error.stack);
     }
     throw error;
@@ -257,6 +259,7 @@ export async function getCheckId(
       core.error(
         `getCheckId: An unexpected error has occurred: ${error.message}`
       );
+      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
       error.stack && core.debug(error.stack);
     }
     throw error;
@@ -329,6 +332,7 @@ export async function getRunState(
       core.error(
         `getRunState: An unexpected error has occurred: ${error.message}`
       );
+      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
       error.stack && core.debug(error.stack);
     }
     throw error;

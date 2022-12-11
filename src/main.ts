@@ -38,7 +38,7 @@ async function run(): Promise<void> {
     let workflowRunId: number | undefined;
     let checkSuiteId: number | undefined;
     let checkRunId: number | undefined;
-    let checkRunStatus: () => Promise<boolean> | undefined;
+    let checkRunStatus: (() => Promise<boolean>) | undefined;
     while (elapsedTime < timeoutMs) {
       attemptNo++;
       elapsedTime = Date.now() - startTime;
@@ -57,68 +57,68 @@ async function run(): Promise<void> {
         checkRunId = await getCheckId(checkSuiteId, config.checkName);
       }
 
-      if (checkRunStatus! !== undefined) {
+      if (checkRunStatus !== undefined) {
         if (await checkRunStatus()) {
           return;
         }
-      } else if (workflowRunId !== undefined) {
-        if (checkRunStatus! === undefined) {
-          if (checkRunId !== undefined) {
-            checkRunStatus = async () => {
-              const runStatus = await getRunStatus(
-                checkRunId!,
-                RunType.CheckRun
-              );
+      } else if (checkRunStatus === undefined && workflowRunId !== undefined) {
+        const safeWorkflowRunId = workflowRunId;
+        if (checkRunId !== undefined) {
+          const safeCheckRunId = checkRunId;
+          checkRunStatus = async () => {
+            const runStatus = await getRunStatus(
+              safeCheckRunId,
+              RunType.CheckRun
+            );
 
-              if (runStatus.completed) {
-                const conclusion = runStatus.conclusion;
-                const completionMsg =
-                  "Check Run Completed:\n" +
-                  `  Check Run ID: ${checkRunId}\n` +
-                  `  Elapsed Time: ${getElapsedTime(startTime, Date.now())}\n` +
-                  `  Conclusion: ${conclusion}`;
+            if (runStatus.completed) {
+              const conclusion = runStatus.conclusion;
+              const completionMsg =
+                "Check Run Completed:\n" +
+                `  Check Run ID: ${safeCheckRunId}\n` +
+                `  Elapsed Time: ${getElapsedTime(startTime, Date.now())}\n` +
+                `  Conclusion: ${conclusion}`;
 
-                if (conclusion !== RunConclusion.Success) {
-                  core.error(completionMsg);
-                  core.setFailed(
-                    `Workflow ${config.workflow} (${workflowId}) has not completed successfully: ${conclusion}.`
-                  );
-                } else {
-                  core.info(completionMsg);
-                }
-                return true;
+              if (conclusion !== RunConclusion.Success) {
+                core.error(completionMsg);
+                core.setFailed(
+                  `Workflow ${config.workflow} (${workflowId}) has not completed successfully: ${conclusion}.`
+                );
+              } else {
+                core.info(completionMsg);
               }
+              return true;
+            }
 
-              return false;
-            };
-          } else {
-            checkRunStatus = async () => {
-              const runStatus = await getRunStatus(
-                workflowRunId!,
-                RunType.WorkflowRun
-              );
+            return false;
+          };
+        } else {
+          checkRunStatus = async () => {
+            const runStatus = await getRunStatus(
+              safeWorkflowRunId,
+              RunType.WorkflowRun
+            );
 
-              if (runStatus.completed) {
-                const conclusion = runStatus.conclusion;
-                const completionMsg =
-                  "Workflow Run Completed:\n" +
-                  `  Workflow Run ID: ${workflowRunId}\n` +
-                  `  Elapsed Time: ${getElapsedTime(startTime, Date.now())}\n` +
-                  `  Conclusion: ${conclusion}`;
+            if (runStatus.completed) {
+              const conclusion = runStatus.conclusion;
+              const completionMsg =
+                "Workflow Run Completed:\n" +
+                `  Workflow Run ID: ${safeWorkflowRunId}\n` +
+                `  Elapsed Time: ${getElapsedTime(startTime, Date.now())}\n` +
+                `  Conclusion: ${conclusion}`;
 
-                if (conclusion !== RunConclusion.Success) {
-                  core.error(completionMsg);
-                  core.setFailed(
-                    `Workflow ${config.workflow} (${workflowId}) has not completed successfully: ${conclusion}.`
-                  );
-                } else {
-                  core.info(completionMsg);
-                }
-                return true;
+              if (conclusion !== RunConclusion.Success) {
+                core.error(completionMsg);
+                core.setFailed(
+                  `Workflow ${config.workflow} (${workflowId}) has not completed successfully: ${conclusion}.`
+                );
+              } else {
+                core.info(completionMsg);
               }
-              return false;
-            };
-          }
+              return true;
+            }
+            return false;
+          };
         }
       } else {
         core.debug("Run ID has not been discovered yet...");
@@ -138,6 +138,7 @@ async function run(): Promise<void> {
       if (!error.message.includes("Timeout")) {
         core.warning("Does the token have the correct permissions?");
       }
+      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
       error.stack && core.debug(error.stack);
       core.setFailed(error.message);
     }

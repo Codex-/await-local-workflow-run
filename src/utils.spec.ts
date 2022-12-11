@@ -1,4 +1,6 @@
 import type { Context } from "@actions/github/lib/context";
+import type { WebhookPayload } from "@actions/github/lib/interfaces";
+import { DateTime } from "luxon";
 import {
   afterAll,
   afterEach,
@@ -9,9 +11,6 @@ import {
   vi,
 } from "vitest";
 
-import * as github from "@actions/github";
-import type { WebhookPayload } from "@actions/github/lib/interfaces";
-import { DateTime } from "luxon";
 import {
   getBranchName,
   getElapsedTime,
@@ -80,9 +79,7 @@ describe("utils", () => {
     });
 
     it("should return undefined if the ref is for an invalid tag", () => {
-      console.log(github.context.ref);
       mockContextProp("ref", "refs/tags/");
-      console.log(github.context.ref);
 
       expect(getBranchName()).toBeUndefined();
     });
