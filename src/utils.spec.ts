@@ -9,13 +9,6 @@ import {
   vi,
 } from "vitest";
 
-let mockedContext: Context = {} as any;
-vi.mock("@actions/github", () => ({
-  get context() {
-    return mockedContext;
-  },
-}));
-
 import * as github from "@actions/github";
 import type { WebhookPayload } from "@actions/github/lib/interfaces";
 import { DateTime } from "luxon";
@@ -26,6 +19,13 @@ import {
   getOffsetRange,
   sleep,
 } from "./utils";
+
+let mockedContext: Context = {} as any;
+vi.mock("@actions/github", () => ({
+  get context() {
+    return mockedContext;
+  },
+}));
 
 describe("utils", () => {
   /* eslint-disable no-redeclare */

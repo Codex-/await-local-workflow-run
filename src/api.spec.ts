@@ -9,15 +9,6 @@ import {
   vi,
 } from "vitest";
 
-vi.mock("@actions/core");
-let mockedContext: Context = {} as any;
-vi.mock("@actions/github", () => ({
-  get context() {
-    return mockedContext;
-  },
-  getOctokit: vi.fn(),
-}));
-
 import * as core from "@actions/core";
 import * as github from "@actions/github";
 import {
@@ -33,6 +24,15 @@ import {
   RunStatus,
   RunType,
 } from "./api";
+
+vi.mock("@actions/core");
+let mockedContext: Context = {} as any;
+vi.mock("@actions/github", () => ({
+  get context() {
+    return mockedContext;
+  },
+  getOctokit: vi.fn(),
+}));
 
 interface MockResponse {
   data: any;
