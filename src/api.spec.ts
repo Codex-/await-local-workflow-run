@@ -1,6 +1,6 @@
-import type { Context } from "@actions/github/lib/context";
 import * as core from "@actions/core";
 import * as github from "@actions/github";
+import type { Context } from "@actions/github/lib/context";
 import {
   afterEach,
   beforeEach,
