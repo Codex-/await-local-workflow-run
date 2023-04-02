@@ -594,9 +594,9 @@ describe("API", () => {
 
   describe("getRunState", () => {
     it("should throw if an unknown run type is specified", async () => {
-      await expect(() => getRunState(123456, -1)).rejects.toThrowError(
-        "Unknown run type specified"
-      );
+      await expect(() =>
+        getRunState(123456, -1 as RunType)
+      ).rejects.toThrowError("Unknown run type specified");
     });
 
     describe("workflow", () => {
