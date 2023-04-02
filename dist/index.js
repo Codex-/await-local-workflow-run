@@ -580,6 +580,10 @@ var require_proxy = __commonJS({
       if (!reqUrl.hostname) {
         return false;
       }
+      const reqHost = reqUrl.hostname;
+      if (isLoopbackAddress(reqHost)) {
+        return true;
+      }
       const noProxy = process.env["no_proxy"] || process.env["NO_PROXY"] || "";
       if (!noProxy) {
         return false;
@@ -597,13 +601,17 @@ var require_proxy = __commonJS({
         upperReqHosts.push(`${upperReqHosts[0]}:${reqPort}`);
       }
       for (const upperNoProxyItem of noProxy.split(",").map((x) => x.trim().toUpperCase()).filter((x) => x)) {
-        if (upperReqHosts.some((x) => x === upperNoProxyItem)) {
+        if (upperNoProxyItem === "*" || upperReqHosts.some((x) => x === upperNoProxyItem || x.endsWith(`.${upperNoProxyItem}`) || upperNoProxyItem.startsWith(".") && x.endsWith(`${upperNoProxyItem}`))) {
           return true;
         }
       }
       return false;
     }
     exports.checkBypass = checkBypass;
+    function isLoopbackAddress(host) {
+      const hostLower = host.toLowerCase();
+      return hostLower === "localhost" || hostLower.startsWith("127.") || hostLower.startsWith("[::1]") || hostLower.startsWith("[0:0:0:0:0:0:0:1]");
+    }
   }
 });
 
@@ -8372,8 +8380,11 @@ var PolyNumberFormatter = class {
 var PolyDateFormatter = class {
   constructor(dt, intl, opts) {
     this.opts = opts;
+    this.originalZone = void 0;
     let z = void 0;
-    if (dt.zone.isUniversal) {
+    if (this.opts.timeZone) {
+      this.dt = dt;
+    } else if (dt.zone.type === "fixed") {
       const gmtOffset = -1 * (dt.offset / 60);
       const offsetZ = gmtOffset >= 0 ? `Etc/GMT+${gmtOffset}` : `Etc/GMT${gmtOffset}`;
       if (dt.offset !== 0 && IANAZone.create(offsetZ).valid) {
@@ -8381,27 +8392,48 @@ var PolyDateFormatter = class {
         this.dt = dt;
       } else {
         z = "UTC";
-        if (opts.timeZoneName) {
-          this.dt = dt;
-        } else {
-          this.dt = dt.offset === 0 ? dt : DateTime.fromMillis(dt.ts + dt.offset * 60 * 1e3);
-        }
+        this.dt = dt.offset === 0 ? dt : dt.setZone("UTC").plus({ minutes: dt.offset });
+        this.originalZone = dt.zone;
       }
     } else if (dt.zone.type === "system") {
       this.dt = dt;
-    } else {
+    } else if (dt.zone.type === "iana") {
       this.dt = dt;
       z = dt.zone.name;
+    } else {
+      z = "UTC";
+      this.dt = dt.setZone("UTC").plus({ minutes: dt.offset });
+      this.originalZone = dt.zone;
     }
     const intlOpts = { ...this.opts };
     intlOpts.timeZone = intlOpts.timeZone || z;
     this.dtf = getCachedDTF(intl, intlOpts);
   }
   format() {
+    if (this.originalZone) {
+      return this.formatToParts().map(({ value }) => value).join("");
+    }
     return this.dtf.format(this.dt.toJSDate());
   }
   formatToParts() {
-    return this.dtf.formatToParts(this.dt.toJSDate());
+    const parts = this.dtf.formatToParts(this.dt.toJSDate());
+    if (this.originalZone) {
+      return parts.map((part) => {
+        if (part.type === "timeZoneName") {
+          const offsetName = this.originalZone.offsetName(this.dt.ts, {
+            locale: this.dt.locale,
+            format: this.opts.timeZoneName
+          });
+          return {
+            ...part,
+            value: offsetName
+          };
+        } else {
+          return part;
+        }
+      });
+    }
+    return parts;
   }
   resolvedOptions() {
     return this.dtf.resolvedOptions();
@@ -8956,7 +8988,7 @@ function objToLocalTS(obj) {
   );
   if (obj.year < 100 && obj.year >= 0) {
     d = new Date(d);
-    d.setUTCFullYear(d.getUTCFullYear() - 1900);
+    d.setUTCFullYear(obj.year, obj.month - 1, obj.day);
   }
   return +d;
 }
@@ -9201,7 +9233,7 @@ var Formatter = class {
       const c = fmt.charAt(i);
       if (c === "'") {
         if (currentFull.length > 0) {
-          splits.push({ literal: bracketed, val: currentFull });
+          splits.push({ literal: bracketed || /^\s+$/.test(currentFull), val: currentFull });
         }
         current = null;
         currentFull = "";
@@ -9212,14 +9244,14 @@ var Formatter = class {
         currentFull += c;
       } else {
         if (currentFull.length > 0) {
-          splits.push({ literal: false, val: currentFull });
+          splits.push({ literal: /^\s+$/.test(currentFull), val: currentFull });
         }
         currentFull = c;
         current = c;
       }
     }
     if (currentFull.length > 0) {
-      splits.push({ literal: bracketed, val: currentFull });
+      splits.push({ literal: bracketed || /^\s+$/.test(currentFull), val: currentFull });
     }
     return splits;
   }
@@ -10673,7 +10705,7 @@ var Interval = class {
     if (!this.isValid)
       return NaN;
     const start = this.start.startOf(unit), end = this.end.startOf(unit);
-    return Math.floor(end.diff(start, unit).get(unit)) + 1;
+    return Math.floor(end.diff(start, unit).get(unit)) + (end.valueOf() !== this.end.valueOf());
   }
   /**
    * Returns whether this Interval's start and end are both in the same unit of time
@@ -11433,6 +11465,8 @@ function unitForToken(token, loc) {
         return offset(new RegExp(`([+-]${oneOrTwo.source})(${two.source})?`), 2);
       case "z":
         return simple(/[a-z_+-/]{1,256}?/i);
+      case " ":
+        return simple(/[^\S\n\r]/);
       default:
         return literal(t);
     }
@@ -11484,9 +11518,10 @@ var partTypeStyleToTokenVal = {
 function tokenForPart(part, formatOpts) {
   const { type, value } = part;
   if (type === "literal") {
+    const isSpace = /^\s+$/.test(value);
     return {
-      literal: true,
-      val: value
+      literal: !isSpace,
+      val: isSpace ? " " : value
     };
   }
   const style = formatOpts[type];
@@ -11830,7 +11865,7 @@ function adjustTime(inst, dur) {
 }
 function parseDataToDateTime(parsed, parsedZone, opts, format, text, specificOffset) {
   const { setZone, zone } = opts;
-  if (parsed && Object.keys(parsed).length !== 0) {
+  if (parsed && Object.keys(parsed).length !== 0 || parsedZone) {
     const interpretationZone = parsedZone || zone, inst = DateTime.fromObject(parsed, {
       ...opts,
       zone: interpretationZone,
