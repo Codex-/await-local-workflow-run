@@ -39,7 +39,7 @@
     "esbuild": "^0.18.10",
     "eslint": "^8.43.0",
     "eslint-config-airbnb-typescript": "^17.1.0",
-    "eslint-config-prettier": "^8.8.0",
+    "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-github": "^4.8.0",
     "eslint-plugin-import": "^2.27.5",
     "prettier": "3.0.2",
