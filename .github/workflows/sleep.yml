@@ -1,6 +1,9 @@
 name: Sleep
 on:
+  pull_request:
   push:
+    branches:
+      - main
 
 jobs:
   short:
