@@ -28,7 +28,7 @@ export async function getWorkflowId(workflowFilename: string): Promise<number> {
 
     if (response.status !== 200) {
       throw new Error(
-        `Failed to get Workflows, expected 200 but received ${response.status}`
+        `Failed to get Workflows, expected 200 but received ${response.status}`,
       );
     }
 
@@ -37,23 +37,23 @@ export async function getWorkflowId(workflowFilename: string): Promise<number> {
         response.data.workflows.map((workflow) => [
           sanitiseWorkflowPath(workflow.path),
           workflow.id,
-        ])
+        ]),
       );
     const workflowsWithIds = response.data.workflows.map(
-      (workflow) => `${sanitiseWorkflowPath(workflow.path)} (${workflow.id})`
+      (workflow) => `${sanitiseWorkflowPath(workflow.path)} (${workflow.id})`,
     );
 
     core.debug(
       `Fetched Workflows:\n` +
         `  Repository: ${github.context.repo.owner}/${github.context.repo.repo}\n` +
         `  Total Workflows: ${response.data.total_count}\n` +
-        `  Workflows: [${workflowsWithIds}]`
+        `  Workflows: [${workflowsWithIds}]`,
     );
 
     const id = workflowsIdsMap[workflowFilename];
     if (id === undefined) {
       throw new Error(
-        `Failed to get Workflow ID for '${workflowFilename}', available workflows: [${workflowsWithIds}]`
+        `Failed to get Workflow ID for '${workflowFilename}', available workflows: [${workflowsWithIds}]`,
       );
     }
 
@@ -61,7 +61,7 @@ export async function getWorkflowId(workflowFilename: string): Promise<number> {
   } catch (error) {
     if (error instanceof Error) {
       core.error(
-        `getWorkflowId: An unexpected error has occurred: ${error.message}`
+        `getWorkflowId: An unexpected error has occurred: ${error.message}`,
       );
       // eslint-disable-next-line @typescript-eslint/no-unused-expressions
       error.stack && core.debug(error.stack);
@@ -72,7 +72,7 @@ export async function getWorkflowId(workflowFilename: string): Promise<number> {
 
 let attemptWithBranch = false;
 export async function getWorkflowRun(
-  workflowId: number
+  workflowId: number,
 ): Promise<WorkflowRun | undefined> {
   const workflowRuns = await getWorkflowRuns(workflowId, attemptWithBranch);
   if (workflowRuns.length === 0) {
@@ -87,7 +87,7 @@ export async function getWorkflowRun(
       `  Run ID: ${workflowRun.id}\n` +
       `  Run Attempt: ${workflowRun.attempt}\n` +
       `  Run Check Suite ID: ${workflowRun.checkSuiteId || "null"}\n` +
-      `  Run Status: ${workflowRun.status || "null"}`
+      `  Run Status: ${workflowRun.status || "null"}`,
   );
 
   return workflowRun;
@@ -115,7 +115,7 @@ export interface WorkflowRun {
  */
 export async function getWorkflowRuns(
   workflowId: number,
-  tryUseBranch = false
+  tryUseBranch = false,
 ): Promise<WorkflowRun[]> {
   try {
     const branchName = tryUseBranch ? getBranchName() : undefined;
@@ -139,7 +139,7 @@ export async function getWorkflowRuns(
 
     if (response.status !== 200) {
       throw new Error(
-        `Failed to get Workflow runs, expected 200 but received ${response.status}`
+        `Failed to get Workflow runs, expected 200 but received ${response.status}`,
       );
     }
 
@@ -175,15 +175,15 @@ export async function getWorkflowRuns(
         `  Workflow ID: ${workflowId}\n` +
         `  Triggering SHA: ${getHeadSha()}\n` +
         `  Runs Fetched: [${runs.map(
-          (run) => `${run.id} (Attempt ${run.attempt})`
-        )}]`
+          (run) => `${run.id} (Attempt ${run.attempt})`,
+        )}]`,
     );
 
     return runs;
   } catch (error) {
     if (error instanceof Error) {
       core.error(
-        `getWorkflowRuns: An unexpected error has occurred: ${error.message}`
+        `getWorkflowRuns: An unexpected error has occurred: ${error.message}`,
       );
       // eslint-disable-next-line @typescript-eslint/no-unused-expressions
       error.stack && core.debug(error.stack);
@@ -216,7 +216,7 @@ export type RunResult = WorkflowCompleted | WorkflowIncomplete;
 
 export async function getCheckId(
   checkSuiteId: number,
-  checkName: string
+  checkName: string,
 ): Promise<number> {
   try {
     // https://docs.github.com/en/rest/checks/runs#list-check-runs-in-a-check-suite
@@ -228,28 +228,28 @@ export async function getCheckId(
 
     if (response.status !== 200) {
       throw new Error(
-        `Failed to get Checks, expected 200 but received ${response.status}`
+        `Failed to get Checks, expected 200 but received ${response.status}`,
       );
     }
 
     const checkIdsMap: Record<string, number | undefined> = Object.fromEntries(
-      response.data.check_runs.map((check) => [check.name, check.id])
+      response.data.check_runs.map((check) => [check.name, check.id]),
     );
     const checksWithIds = response.data.check_runs.map(
-      (check) => `${check.name} (${check.id})`
+      (check) => `${check.name} (${check.id})`,
     );
 
     core.debug(
       `Fetched Checks:\n` +
         `  Repository: ${github.context.repo.owner}/${github.context.repo.repo}\n` +
         `  Total Checks: ${response.data.total_count}\n` +
-        `  Checks: [${checksWithIds}]`
+        `  Checks: [${checksWithIds}]`,
     );
 
     const id = checkIdsMap[checkName];
     if (id === undefined) {
       throw new Error(
-        `Failed to get Check ID for '${checkName}', available checks: [${checksWithIds}]`
+        `Failed to get Check ID for '${checkName}', available checks: [${checksWithIds}]`,
       );
     }
 
@@ -257,7 +257,7 @@ export async function getCheckId(
   } catch (error) {
     if (error instanceof Error) {
       core.error(
-        `getCheckId: An unexpected error has occurred: ${error.message}`
+        `getCheckId: An unexpected error has occurred: ${error.message}`,
       );
       // eslint-disable-next-line @typescript-eslint/no-unused-expressions
       error.stack && core.debug(error.stack);
@@ -283,7 +283,7 @@ type WorkflowRunResponse = Awaited<
 
 export async function getRunState(
   runId: number,
-  runType: RunType
+  runType: RunType,
 ): Promise<RunState> {
   try {
     let response: CheckRunResponse | WorkflowRunResponse;
@@ -310,7 +310,7 @@ export async function getRunState(
 
     if (response.status !== 200) {
       throw new Error(
-        `Failed to get run state, expected 200 but received ${response.status}`
+        `Failed to get run state, expected 200 but received ${response.status}`,
       );
     }
 
@@ -320,7 +320,7 @@ export async function getRunState(
         `  Run ID: ${runId}\n` +
         `  Run Type: ${runType === RunType.CheckRun ? "Check" : "Workflow"}\n` +
         `  Status: ${response.data.status}\n` +
-        `  Conclusion: ${response.data.conclusion}`
+        `  Conclusion: ${response.data.conclusion}`,
     );
 
     return {
@@ -330,7 +330,7 @@ export async function getRunState(
   } catch (error) {
     if (error instanceof Error) {
       core.error(
-        `getRunState: An unexpected error has occurred: ${error.message}`
+        `getRunState: An unexpected error has occurred: ${error.message}`,
       );
       // eslint-disable-next-line @typescript-eslint/no-unused-expressions
       error.stack && core.debug(error.stack);
@@ -341,7 +341,7 @@ export async function getRunState(
 
 export async function getRunStatus(
   runId: number,
-  runType: RunType
+  runType: RunType,
 ): Promise<RunResult> {
   const { status, conclusion } = await getRunState(runId, runType);
 

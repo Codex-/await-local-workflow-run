@@ -28,7 +28,7 @@ async function run(): Promise<void> {
       `Awaiting completion of local Workflow Run ${config.workflow}...\n` +
         `  Workflow: ${config.workflow}\n` +
         (config.checkName ? `  Check: ${config.checkName}\n` : "") +
-        `  Timeout: ${Duration.fromMillis(timeoutMs).toHuman()}`
+        `  Timeout: ${Duration.fromMillis(timeoutMs).toHuman()}`,
     );
 
     // Give some initial time for GitHub to wake up and queue the checks.
@@ -68,7 +68,7 @@ async function run(): Promise<void> {
           checkRunStatus = async () => {
             const runStatus = await getRunStatus(
               safeCheckRunId,
-              RunType.CheckRun
+              RunType.CheckRun,
             );
 
             if (runStatus.completed) {
@@ -82,7 +82,7 @@ async function run(): Promise<void> {
               if (conclusion !== RunConclusion.Success) {
                 core.error(completionMsg);
                 core.setFailed(
-                  `Workflow ${config.workflow} (${workflowId}) has not completed successfully: ${conclusion}.`
+                  `Workflow ${config.workflow} (${workflowId}) has not completed successfully: ${conclusion}.`,
                 );
               } else {
                 core.info(completionMsg);
@@ -96,7 +96,7 @@ async function run(): Promise<void> {
           checkRunStatus = async () => {
             const runStatus = await getRunStatus(
               safeWorkflowRunId,
-              RunType.WorkflowRun
+              RunType.WorkflowRun,
             );
 
             if (runStatus.completed) {
@@ -110,7 +110,7 @@ async function run(): Promise<void> {
               if (conclusion !== RunConclusion.Success) {
                 core.error(completionMsg);
                 core.setFailed(
-                  `Workflow ${config.workflow} (${workflowId}) has not completed successfully: ${conclusion}.`
+                  `Workflow ${config.workflow} (${workflowId}) has not completed successfully: ${conclusion}.`,
                 );
               } else {
                 core.info(completionMsg);
@@ -130,7 +130,7 @@ async function run(): Promise<void> {
     }
 
     throw new Error(
-      "Timeout exceeded while attempting to await local workflow run"
+      "Timeout exceeded while attempting to await local workflow run",
     );
   } catch (error) {
     if (error instanceof Error) {
