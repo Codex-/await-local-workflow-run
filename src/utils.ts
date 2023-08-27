@@ -37,7 +37,7 @@ export function getBranchName(): string | undefined {
       core.debug(`getWorkflowRunIds: Filtered branch name: ${ref}`);
     } else {
       core.warning(
-        `failed to get branch for ref: ${ref}, please raise an issue with this git ref.`
+        `failed to get branch for ref: ${ref}, please raise an issue with this git ref.`,
       );
     }
   } else {
@@ -68,7 +68,7 @@ export function getHeadSha(): string {
 export function getOffsetRange(daysBefore: number): string {
   if (daysBefore < 1) {
     throw new Error(
-      `daysBefore must be greater than 1, received: ${daysBefore}`
+      `daysBefore must be greater than 1, received: ${daysBefore}`,
     );
   }
   const startDate = DateTime.now()
@@ -87,7 +87,7 @@ export function getElapsedTime(start: number, end: number): string {
   const duration = Duration.fromMillis(end - start).shiftTo(
     "hours",
     "minutes",
-    "seconds"
+    "seconds",
   );
 
   return duration.toHuman();

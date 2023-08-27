@@ -69,7 +69,7 @@ describe("Action", () => {
     it("should throw if it cannot parse a string into a number", () => {
       mockEnvConfig.poll_interval_ms = "hello";
       expect(() => getConfig()).toThrowError(
-        `Unable to parse value: ${mockEnvConfig.poll_interval_ms}`
+        `Unable to parse value: ${mockEnvConfig.poll_interval_ms}`,
       );
     });
   });

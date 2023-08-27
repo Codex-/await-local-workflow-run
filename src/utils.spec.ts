@@ -34,7 +34,7 @@ describe("utils", () => {
   function mockContextProp(prop: "payload", value: WebhookPayload): void;
   function mockContextProp(
     prop: "eventName" | "ref" | "sha" | "payload",
-    value: string | WebhookPayload
+    value: string | WebhookPayload,
   ): void {
     Object.defineProperty(mockedContext, prop, {
       value,
@@ -147,7 +147,7 @@ describe("utils", () => {
 
     it("should throw if you give an invalid day offset", () => {
       expect(() => getOffsetRange(0)).toThrow(
-        "daysBefore must be greater than 1, received: 0"
+        "daysBefore must be greater than 1, received: 0",
       );
     });
   });
@@ -180,7 +180,7 @@ describe("utils", () => {
         `${timeDifference.hours} hours, ${timeDifference.minutes} minutes, ${(
           timeDifference.seconds +
           timeDifference.milliseconds / 1000
-        ).toFixed(3)} seconds`
+        ).toFixed(3)} seconds`,
       );
     });
   });

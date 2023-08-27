@@ -74,7 +74,7 @@ describe("API", () => {
   function mockContextProp(prop: "sha", value: string): void;
   function mockContextProp(
     prop: "ref" | "repo" | "sha",
-    value: string | Record<string, string>
+    value: string | Record<string, string>,
   ): void {
     Object.defineProperty(mockedContext, prop, {
       value,
@@ -125,11 +125,11 @@ describe("API", () => {
         Promise.resolve({
           data: mockData,
           status: 200,
-        })
+        }),
       );
 
       expect(await getWorkflowId("slice.yml")).toStrictEqual(
-        mockData.workflows[2].id
+        mockData.workflows[2].id,
       );
     });
 
@@ -139,11 +139,11 @@ describe("API", () => {
         Promise.resolve({
           data: undefined,
           status: errorStatus,
-        })
+        }),
       );
 
       await expect(getWorkflowId("implode")).rejects.toThrow(
-        `Failed to get Workflows, expected 200 but received ${errorStatus}`
+        `Failed to get Workflows, expected 200 but received ${errorStatus}`,
       );
     });
 
@@ -153,7 +153,7 @@ describe("API", () => {
         Promise.resolve({
           data: mockData,
           status: 200,
-        })
+        }),
       );
 
       await expect(getWorkflowId(workflowName)).rejects.toThrow(
@@ -161,8 +161,8 @@ describe("API", () => {
           (workflow) =>
             `${workflow.path.replace(/\.github\/workflows\//i, "")} (${
               workflow.id
-            })`
-        )}]`
+            })`,
+        )}]`,
       );
     });
 
@@ -175,11 +175,11 @@ describe("API", () => {
             workflows: [],
           },
           status: 200,
-        })
+        }),
       );
 
       await expect(getWorkflowId(workflowName)).rejects.toThrow(
-        `Failed to get Workflow ID for '${workflowName}', available workflows: []`
+        `Failed to get Workflow ID for '${workflowName}', available workflows: []`,
       );
     });
   });
@@ -206,7 +206,7 @@ describe("API", () => {
             workflow_runs: mockWorkflowRunsApiData,
           },
           status: 200,
-        })
+        }),
       );
       const run = await getWorkflowRun(0);
 
@@ -235,7 +235,7 @@ describe("API", () => {
             workflow_runs: mockWorkflowRunsApiData,
           },
           status: 200,
-        })
+        }),
       );
       const run = await getWorkflowRun(0);
 
@@ -261,7 +261,7 @@ describe("API", () => {
               workflow_runs: [],
             },
             status: 200,
-          })
+          }),
         )
         .mockReturnValueOnce(
           Promise.resolve({
@@ -270,12 +270,12 @@ describe("API", () => {
               workflow_runs: mockWorkflowRunsApiData,
             },
             status: 200,
-          })
+          }),
         );
 
       expect(await getWorkflowRun(0)).toBeUndefined();
       expect(Object.keys(listWorkflowRunsSpy.mock.calls[0][0])).not.toContain(
-        "branch"
+        "branch",
       );
       expect(await getWorkflowRun(0)).toStrictEqual({
         id: mockWorkflowRunsApiData[0].id,
@@ -284,7 +284,7 @@ describe("API", () => {
         status: mockWorkflowRunsApiData[0].status,
       });
       expect(Object.keys(listWorkflowRunsSpy.mock.calls[1][0])).toContain(
-        "branch"
+        "branch",
       );
     });
   });
@@ -382,7 +382,7 @@ describe("API", () => {
           Promise.resolve({
             data: mockData,
             status: 200,
-          })
+          }),
         );
     });
 
@@ -395,8 +395,8 @@ describe("API", () => {
 
       expect(workflowRuns).toHaveLength(
         mockWorkflowRunsApiData.filter(
-          (workflow) => workflow.head_sha === mockSha
-        ).length
+          (workflow) => workflow.head_sha === mockSha,
+        ).length,
       );
     });
 
@@ -499,11 +499,11 @@ describe("API", () => {
         Promise.resolve({
           data: undefined,
           status: errorStatus,
-        })
+        }),
       );
 
       await expect(getWorkflowRuns(0)).rejects.toThrow(
-        `Failed to get Workflow runs, expected 200 but received ${errorStatus}`
+        `Failed to get Workflow runs, expected 200 but received ${errorStatus}`,
       );
     });
 
@@ -517,7 +517,7 @@ describe("API", () => {
             workflow_runs: [],
           },
           status: 200,
-        })
+        }),
       );
 
       expect(await getWorkflowRuns(0)).toStrictEqual([]);
@@ -548,7 +548,7 @@ describe("API", () => {
             check_runs: mockCheckRunsApiData,
           },
           status: 200,
-        })
+        }),
       );
       const runID = await getCheckId(0, "ganon");
 
@@ -569,11 +569,11 @@ describe("API", () => {
             check_runs: mockCheckRunsApiData,
           },
           status: 200,
-        })
+        }),
       );
 
       await expect(() => getCheckId(0, "link")).rejects.toThrowError(
-        "Failed to get Check ID for 'link', available checks: [ganon (123456)]"
+        "Failed to get Check ID for 'link', available checks: [ganon (123456)]",
       );
     });
 
@@ -583,11 +583,11 @@ describe("API", () => {
         Promise.resolve({
           data: undefined,
           status: errorStatus,
-        })
+        }),
       );
 
       await expect(getCheckId(0, "")).rejects.toThrow(
-        `Failed to get Checks, expected 200 but received ${errorStatus}`
+        `Failed to get Checks, expected 200 but received ${errorStatus}`,
       );
     });
   });
@@ -595,7 +595,7 @@ describe("API", () => {
   describe("getRunState", () => {
     it("should throw if an unknown run type is specified", async () => {
       await expect(() =>
-        getRunState(123456, -1 as RunType)
+        getRunState(123456, -1 as RunType),
       ).rejects.toThrowError("Unknown run type specified");
     });
 
@@ -609,7 +609,7 @@ describe("API", () => {
           Promise.resolve({
             data: mockData,
             status: 200,
-          })
+          }),
         );
 
         const state = await getRunState(123456, RunType.WorkflowRun);
@@ -623,11 +623,11 @@ describe("API", () => {
           Promise.resolve({
             data: undefined,
             status: errorStatus,
-          })
+          }),
         );
 
         await expect(getRunState(0, RunType.WorkflowRun)).rejects.toThrow(
-          `Failed to get run state, expected 200 but received ${errorStatus}`
+          `Failed to get run state, expected 200 but received ${errorStatus}`,
         );
       });
     });
@@ -642,7 +642,7 @@ describe("API", () => {
           Promise.resolve({
             data: mockData,
             status: 200,
-          })
+          }),
         );
 
         const state = await getRunState(123456, RunType.WorkflowRun);
@@ -656,11 +656,11 @@ describe("API", () => {
           Promise.resolve({
             data: undefined,
             status: errorStatus,
-          })
+          }),
         );
 
         await expect(getRunState(0, RunType.WorkflowRun)).rejects.toThrow(
-          `Failed to get run state, expected 200 but received ${errorStatus}`
+          `Failed to get run state, expected 200 but received ${errorStatus}`,
         );
       });
     });
@@ -677,7 +677,7 @@ describe("API", () => {
           Promise.resolve({
             data: mockData,
             status: 200,
-          })
+          }),
         );
 
         const runStatus = await getRunStatus(0, RunType.WorkflowRun);
@@ -699,7 +699,7 @@ describe("API", () => {
           Promise.resolve({
             data: mockData,
             status: 200,
-          })
+          }),
         );
         const coreSetFailedSpy = vi
           .spyOn(core, "setFailed")
@@ -719,7 +719,7 @@ describe("API", () => {
           Promise.resolve({
             data: mockData,
             status: 200,
-          })
+          }),
         );
         const coreSetFailedSpy = vi
           .spyOn(core, "setFailed")
@@ -728,7 +728,7 @@ describe("API", () => {
         await getRunStatus(0, RunType.WorkflowRun);
 
         expect(coreSetFailedSpy.mock.calls[0][0]).toStrictEqual(
-          RunConclusion.Failure
+          RunConclusion.Failure,
         );
       });
 
@@ -742,7 +742,7 @@ describe("API", () => {
           Promise.resolve({
             data: mockData,
             status: 200,
-          })
+          }),
         );
         const coreSetFailedSpy = vi
           .spyOn(core, "setFailed")
@@ -751,7 +751,7 @@ describe("API", () => {
         await getRunStatus(0, RunType.WorkflowRun);
 
         expect(coreSetFailedSpy.mock.calls[0][0]).toStrictEqual(
-          `Unknown conclusion: ${unknownStatus}`
+          `Unknown conclusion: ${unknownStatus}`,
         );
       });
 
@@ -763,7 +763,7 @@ describe("API", () => {
           Promise.resolve({
             data: mockData,
             status: 200,
-          })
+          }),
         );
 
         const runStatus = await getRunStatus(0, RunType.WorkflowRun);
@@ -785,7 +785,7 @@ describe("API", () => {
           Promise.resolve({
             data: mockData,
             status: 200,
-          })
+          }),
         );
 
         const runStatus = await getRunStatus(0, RunType.CheckRun);
@@ -807,7 +807,7 @@ describe("API", () => {
           Promise.resolve({
             data: mockData,
             status: 200,
-          })
+          }),
         );
         const coreSetFailedSpy = vi
           .spyOn(core, "setFailed")
@@ -827,7 +827,7 @@ describe("API", () => {
           Promise.resolve({
             data: mockData,
             status: 200,
-          })
+          }),
         );
         const coreSetFailedSpy = vi
           .spyOn(core, "setFailed")
@@ -836,7 +836,7 @@ describe("API", () => {
         await getRunStatus(0, RunType.CheckRun);
 
         expect(coreSetFailedSpy.mock.calls[0][0]).toStrictEqual(
-          RunConclusion.Failure
+          RunConclusion.Failure,
         );
       });
 
@@ -850,7 +850,7 @@ describe("API", () => {
           Promise.resolve({
             data: mockData,
             status: 200,
-          })
+          }),
         );
         const coreSetFailedSpy = vi
           .spyOn(core, "setFailed")
@@ -859,7 +859,7 @@ describe("API", () => {
         await getRunStatus(0, RunType.CheckRun);
 
         expect(coreSetFailedSpy.mock.calls[0][0]).toStrictEqual(
-          `Unknown conclusion: ${unknownStatus}`
+          `Unknown conclusion: ${unknownStatus}`,
         );
       });
 
@@ -871,7 +871,7 @@ describe("API", () => {
           Promise.resolve({
             data: mockData,
             status: 200,
-          })
+          }),
         );
 
         const runStatus = await getRunStatus(0, RunType.CheckRun);
