@@ -31,18 +31,18 @@
     "luxon": "^3.4.2"
   },
   "devDependencies": {
-    "@types/luxon": "^3.3.1",
-    "@types/node": "^18.17.11",
-    "@typescript-eslint/parser": "^6.4.1",
+    "@types/luxon": "^3.3.2",
+    "@types/node": "^18.17.12",
+    "@typescript-eslint/parser": "^6.5.0",
     "@vitest/coverage-istanbul": "^0.34.3",
     "chalk": "^5.3.0",
     "esbuild": "^0.19.2",
     "eslint": "^8.48.0",
     "eslint-config-airbnb-typescript": "^17.1.0",
     "eslint-config-prettier": "^9.0.0",
-    "eslint-plugin-github": "^4.9.2",
+    "eslint-plugin-github": "^4.10.0",
     "eslint-plugin-import": "^2.28.1",
-    "prettier": "3.0.2",
+    "prettier": "3.0.3",
     "release-it": "^16.1.5",
     "typescript": "^5.2.2",
     "vitest": "^0.34.3"
