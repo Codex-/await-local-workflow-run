@@ -1,5 +1,5 @@
-import type { Context } from "@actions/github/lib/context";
-import type { WebhookPayload } from "@actions/github/lib/interfaces";
+import type { Context } from "@actions/github/lib/context.js";
+import type { WebhookPayload } from "@actions/github/lib/interfaces.js";
 import { DateTime } from "luxon";
 import {
   afterAll,
@@ -17,7 +17,7 @@ import {
   getHeadSha,
   getOffsetRange,
   sleep,
-} from "./utils";
+} from "./utils.ts";
 
 let mockedContext: Context = {} as any;
 vi.mock("@actions/github", () => ({
@@ -154,10 +154,13 @@ describe("utils", () => {
 
   describe("sleep", () => {
     it("should sleep for a given time", async () => {
+      vi.useFakeTimers();
       const awaitTime = 2000;
       const start = Date.now();
 
-      await sleep(awaitTime);
+      const sleepPromise = sleep(awaitTime);
+      vi.advanceTimersByTime(awaitTime);
+      await sleepPromise;
       expect(Date.now() - start).toBeGreaterThanOrEqual(awaitTime);
     });
   });

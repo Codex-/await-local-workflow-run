@@ -1,13 +1,13 @@
 import * as core from "@actions/core";
 import * as github from "@actions/github";
-import type { Context } from "@actions/github/lib/context";
+import type { Context } from "@actions/github/lib/context.ts";
 import {
   afterEach,
   beforeEach,
   describe,
   expect,
   it,
-  SpyInstance,
+  type SpyInstance,
   vi,
 } from "vitest";
 
@@ -23,7 +23,7 @@ import {
   RunConclusion,
   RunStatus,
   RunType,
-} from "./api";
+} from "./api.ts";
 
 vi.mock("@actions/core");
 let mockedContext: Context = {} as any;
@@ -129,7 +129,7 @@ describe("API", () => {
       );
 
       expect(await getWorkflowId("slice.yml")).toStrictEqual(
-        mockData.workflows[2].id,
+        mockData.workflows[2]?.id,
       );
     });
 
@@ -211,10 +211,10 @@ describe("API", () => {
       const run = await getWorkflowRun(0);
 
       expect(run).toStrictEqual({
-        id: mockWorkflowRunsApiData[0].id,
-        attempt: mockWorkflowRunsApiData[0].run_attempt,
-        checkSuiteId: mockWorkflowRunsApiData[0].check_suite_id,
-        status: mockWorkflowRunsApiData[0].status,
+        id: mockWorkflowRunsApiData[0]?.id,
+        attempt: mockWorkflowRunsApiData[0]?.run_attempt,
+        checkSuiteId: mockWorkflowRunsApiData[0]?.check_suite_id,
+        status: mockWorkflowRunsApiData[0]?.status,
       });
     });
 
@@ -274,16 +274,16 @@ describe("API", () => {
         );
 
       expect(await getWorkflowRun(0)).toBeUndefined();
-      expect(Object.keys(listWorkflowRunsSpy.mock.calls[0][0])).not.toContain(
+      expect(Object.keys(listWorkflowRunsSpy.mock.calls[0]?.[0])).not.toContain(
         "branch",
       );
       expect(await getWorkflowRun(0)).toStrictEqual({
-        id: mockWorkflowRunsApiData[0].id,
-        attempt: mockWorkflowRunsApiData[0].run_attempt,
-        checkSuiteId: mockWorkflowRunsApiData[0].check_suite_id,
-        status: mockWorkflowRunsApiData[0].status,
+        id: mockWorkflowRunsApiData[0]?.id,
+        attempt: mockWorkflowRunsApiData[0]?.run_attempt,
+        checkSuiteId: mockWorkflowRunsApiData[0]?.check_suite_id,
+        status: mockWorkflowRunsApiData[0]?.status,
       });
-      expect(Object.keys(listWorkflowRunsSpy.mock.calls[1][0])).toContain(
+      expect(Object.keys(listWorkflowRunsSpy.mock.calls[1]?.[0])).toContain(
         "branch",
       );
     });
@@ -411,7 +411,7 @@ describe("API", () => {
 
       const workflowRuns = await getWorkflowRuns(0);
 
-      expect(workflowRuns[0].attempt).toStrictEqual(runAttempt);
+      expect(workflowRuns[0]?.attempt).toStrictEqual(runAttempt);
     });
 
     it("should return the runs in attempt order", async () => {
@@ -434,25 +434,25 @@ describe("API", () => {
       // eslint-disable-next-line github/array-foreach
       runAttempts.forEach((attempt, i) => {
         const workflowRun = workflowRuns[i];
-        expect(workflowRun.attempt).toStrictEqual(attempt.run_attempt);
-        expect(workflowRun.checkSuiteId).toStrictEqual(attempt.check_suite_id);
-        expect(workflowRun.id).toStrictEqual(attempt.id);
-        expect(workflowRun.status).toStrictEqual(attempt.status);
+        expect(workflowRun?.attempt).toStrictEqual(attempt.run_attempt);
+        expect(workflowRun?.checkSuiteId).toStrictEqual(attempt.check_suite_id);
+        expect(workflowRun?.id).toStrictEqual(attempt.id);
+        expect(workflowRun?.status).toStrictEqual(attempt.status);
       });
     });
 
     it("should return runs in the correct shape", async () => {
       const workflowRun = (await getWorkflowRuns(0))[0];
 
-      expect(typeof workflowRun.attempt).toStrictEqual("number");
-      expect(typeof workflowRun.checkSuiteId).toStrictEqual("number");
-      expect(typeof workflowRun.id).toStrictEqual("number");
-      expect(typeof workflowRun.status).toStrictEqual("string");
+      expect(typeof workflowRun?.attempt).toStrictEqual("number");
+      expect(typeof workflowRun?.checkSuiteId).toStrictEqual("number");
+      expect(typeof workflowRun?.id).toStrictEqual("number");
+      expect(typeof workflowRun?.status).toStrictEqual("string");
     });
 
     it("should not try to use the branch name by default", async () => {
       const workflowRun = (await getWorkflowRuns(0))[0];
-      const requestObj = listWorkflowRunsSpy.mock.calls[0][0];
+      const requestObj = listWorkflowRunsSpy.mock.calls[0]?.[0];
 
       expect(workflowRun).toBeDefined();
       expect(requestObj.branch).toBeUndefined();
@@ -460,7 +460,7 @@ describe("API", () => {
 
     it("should use the branch name for the request if tryBranchName is true", async () => {
       const workflowRun = (await getWorkflowRuns(0, true))[0];
-      const requestObj = listWorkflowRunsSpy.mock.calls[0][0];
+      const requestObj = listWorkflowRunsSpy.mock.calls[0]?.[0];
 
       expect(workflowRun).toBeDefined();
       expect(requestObj.branch).toStrictEqual(mockBranchName);
@@ -468,7 +468,7 @@ describe("API", () => {
 
     it("should use the created field if the branch name is not being used", async () => {
       const workflowRun = (await getWorkflowRuns(0))[0];
-      const requestObj = listWorkflowRunsSpy.mock.calls[0][0];
+      const requestObj = listWorkflowRunsSpy.mock.calls[0]?.[0];
 
       expect(workflowRun).toBeDefined();
       expect(requestObj.created).toBeDefined();
@@ -478,7 +478,7 @@ describe("API", () => {
 
     it("should exclude the created field if the branch name is being used", async () => {
       const workflowRun = (await getWorkflowRuns(0, true))[0];
-      const requestObj = listWorkflowRunsSpy.mock.calls[0][0];
+      const requestObj = listWorkflowRunsSpy.mock.calls[0]?.[0];
 
       expect(workflowRun).toBeDefined();
       expect(requestObj.created).toBeUndefined();
@@ -526,7 +526,7 @@ describe("API", () => {
     it("should not use the branch field if the ref is for a tag", async () => {
       mockContextProp("ref", "/refs/tags/1.5.0");
       const workflowRun = (await getWorkflowRuns(0, true))[0];
-      const requestObj = listWorkflowRunsSpy.mock.calls[0][0];
+      const requestObj = listWorkflowRunsSpy.mock.calls[0]?.[0];
 
       expect(workflowRun).toBeDefined();
       expect(requestObj.branch).toBeUndefined();
@@ -727,7 +727,7 @@ describe("API", () => {
 
         await getRunStatus(0, RunType.WorkflowRun);
 
-        expect(coreSetFailedSpy.mock.calls[0][0]).toStrictEqual(
+        expect(coreSetFailedSpy.mock.calls[0]?.[0]).toStrictEqual(
           RunConclusion.Failure,
         );
       });
@@ -750,7 +750,7 @@ describe("API", () => {
 
         await getRunStatus(0, RunType.WorkflowRun);
 
-        expect(coreSetFailedSpy.mock.calls[0][0]).toStrictEqual(
+        expect(coreSetFailedSpy.mock.calls[0]?.[0]).toStrictEqual(
           `Unknown conclusion: ${unknownStatus}`,
         );
       });
@@ -835,7 +835,7 @@ describe("API", () => {
 
         await getRunStatus(0, RunType.CheckRun);
 
-        expect(coreSetFailedSpy.mock.calls[0][0]).toStrictEqual(
+        expect(coreSetFailedSpy.mock.calls[0]?.[0]).toStrictEqual(
           RunConclusion.Failure,
         );
       });
@@ -858,7 +858,7 @@ describe("API", () => {
 
         await getRunStatus(0, RunType.CheckRun);
 
-        expect(coreSetFailedSpy.mock.calls[0][0]).toStrictEqual(
+        expect(coreSetFailedSpy.mock.calls[0]?.[0]).toStrictEqual(
           `Unknown conclusion: ${unknownStatus}`,
         );
       });

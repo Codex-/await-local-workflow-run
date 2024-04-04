@@ -1,8 +1,8 @@
 import * as core from "@actions/core";
 import * as github from "@actions/github";
-import type { GitHub } from "@actions/github/lib/utils";
-import { ActionConfig, getConfig } from "./action";
-import { getBranchName, getHeadSha, getOffsetRange } from "./utils";
+import type { GitHub } from "@actions/github/lib/utils.ts";
+import { type ActionConfig, getConfig } from "./action.ts";
+import { getBranchName, getHeadSha, getOffsetRange } from "./utils.ts";
 
 type Octokit = InstanceType<typeof GitHub>;
 
@@ -84,10 +84,10 @@ export async function getWorkflowRun(
   core.debug(
     "Workflow Run ID Found:\n" +
       `  Workflow ID: ${workflowId}\n` +
-      `  Run ID: ${workflowRun.id}\n` +
-      `  Run Attempt: ${workflowRun.attempt}\n` +
-      `  Run Check Suite ID: ${workflowRun.checkSuiteId || "null"}\n` +
-      `  Run Status: ${workflowRun.status || "null"}`,
+      `  Run ID: ${workflowRun?.id}\n` +
+      `  Run Attempt: ${workflowRun?.attempt}\n` +
+      `  Run Check Suite ID: ${workflowRun?.checkSuiteId || "null"}\n` +
+      `  Run Status: ${workflowRun?.status || "null"}`,
   );
 
   return workflowRun;

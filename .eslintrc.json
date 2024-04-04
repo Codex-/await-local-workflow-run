@@ -17,7 +17,7 @@
     "coverage",
     "dist",
     "esbuild.config.mjs",
-    "vite.config.ts"
+    "vitest.config.ts"
   ],
   "env": {
     "node": true,
@@ -32,7 +32,7 @@
       "warn",
       { "ignoreIIFE": true, "ignoreVoid": false }
     ],
-    "@typescript-eslint/no-shadow": ["error"],
+    "@typescript-eslint/no-shadow": "error",
     "@typescript-eslint/no-use-before-define": "off",
     "@typescript-eslint/no-unused-vars": [
       "warn",
@@ -42,6 +42,7 @@
     "eslint-comments/no-use": "off",
     "filenames/match-regex": "off",
     "i18n-text/no-en": "off",
+    "import/extensions": "off",
     "import/first": "off",
     "import/named": "off",
     "import/no-extraneous-dependencies": [

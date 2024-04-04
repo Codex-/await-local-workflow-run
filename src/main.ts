@@ -1,6 +1,6 @@
 import * as core from "@actions/core";
 import { Duration } from "luxon";
-import { getConfig } from "./action";
+import { getConfig } from "./action.ts";
 import {
   getCheckId,
   getRunStatus,
@@ -9,8 +9,8 @@ import {
   init,
   RunConclusion,
   RunType,
-} from "./api";
-import { getElapsedTime, sleep } from "./utils";
+} from "./api.ts";
+import { getElapsedTime, sleep } from "./utils.ts";
 
 const INITIAL_WAIT_MS = 10 * 1000; // 10 seconds
 
