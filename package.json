@@ -38,7 +38,7 @@
     "@typescript-eslint/parser": "^8.19.0",
     "@vitest/coverage-v8": "^1.6.0",
     "chalk": "^5.4.1",
-    "changelogithub": "^0.13.11",
+    "changelogithub": "^13.12.1",
     "esbuild": "^0.24.2",
     "eslint": "^8.57.1",
     "eslint-config-airbnb-typescript": "^18.0.0",
