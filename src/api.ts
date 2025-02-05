@@ -1,6 +1,7 @@
 import * as core from "@actions/core";
 import * as github from "@actions/github";
 import type { GitHub } from "@actions/github/lib/utils.ts";
+
 import { type ActionConfig, getConfig } from "./action.ts";
 import { getBranchName, getHeadSha, getOffsetRange } from "./utils.ts";
 
@@ -10,7 +11,7 @@ let config: ActionConfig;
 let octokit: Octokit;
 
 export function init(cfg?: ActionConfig): void {
-  config = cfg || getConfig();
+  config = cfg ?? getConfig();
   octokit = github.getOctokit(config.token);
 }
 
@@ -26,6 +27,7 @@ export async function getWorkflowId(workflowFilename: string): Promise<number> {
       repo: github.context.repo.repo,
     });
 
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (response.status !== 200) {
       throw new Error(
         `Failed to get Workflows, expected 200 but received ${response.status}`,
@@ -39,9 +41,11 @@ export async function getWorkflowId(workflowFilename: string): Promise<number> {
           workflow.id,
         ]),
       );
-    const workflowsWithIds = response.data.workflows.map(
-      (workflow) => `${sanitiseWorkflowPath(workflow.path)} (${workflow.id})`,
-    );
+    const workflowsWithIds = response.data.workflows
+      .map(
+        (workflow) => `${sanitiseWorkflowPath(workflow.path)} (${workflow.id})`,
+      )
+      .join(", ");
 
     core.debug(
       `Fetched Workflows:\n` +
@@ -86,14 +90,14 @@ export async function getWorkflowRun(
       `  Workflow ID: ${workflowId}\n` +
       `  Run ID: ${workflowRun?.id}\n` +
       `  Run Attempt: ${workflowRun?.attempt}\n` +
-      `  Run Check Suite ID: ${workflowRun?.checkSuiteId || "null"}\n` +
-      `  Run Status: ${workflowRun?.status || "null"}`,
+      `  Run Check Suite ID: ${workflowRun?.checkSuiteId ?? "null"}\n` +
+      `  Run Status: ${workflowRun?.status ?? "null"}`,
   );
 
   return workflowRun;
 }
 
-export function resetGetWorkflowRunCfg() {
+export function resetGetWorkflowRunCfg(): void {
   attemptWithBranch = false;
 }
 
@@ -137,6 +141,7 @@ export async function getWorkflowRuns(
           }),
     });
 
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (response.status !== 200) {
       throw new Error(
         `Failed to get Workflow runs, expected 200 but received ${response.status}`,
@@ -145,12 +150,16 @@ export async function getWorkflowRuns(
 
     const runs: WorkflowRun[] = response.data.workflow_runs
       .filter((workflowRun) => workflowRun.head_sha === getHeadSha())
-      .map((workflowRun) => ({
-        id: workflowRun.id,
-        attempt: workflowRun.run_attempt || 0,
-        checkSuiteId: workflowRun.check_suite_id,
-        status: (workflowRun.status as RunStatus) || undefined,
-      }));
+      .map(
+        (workflowRun) =>
+          ({
+            id: workflowRun.id,
+            attempt: workflowRun.run_attempt ?? 0,
+            checkSuiteId: workflowRun.check_suite_id,
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            status: (workflowRun.status as RunStatus | null | "") || undefined,
+          }) satisfies WorkflowRun,
+      );
 
     // Ordering should be newest to oldest by date and time, but
     // I could not find any promises to this ordering.
@@ -169,14 +178,15 @@ export async function getWorkflowRuns(
       });
     }
 
+    const fetchedRuns = runs
+      .map((run) => `${run.id} (Attempt ${run.attempt})`)
+      .join(", ");
     core.debug(
       "Fetched Workflow Runs:\n" +
         `  Repository: ${github.context.repo.owner}/${github.context.repo.repo}\n` +
         `  Workflow ID: ${workflowId}\n` +
         `  Triggering SHA: ${getHeadSha()}\n` +
-        `  Runs Fetched: [${runs.map(
-          (run) => `${run.id} (Attempt ${run.attempt})`,
-        )}]`,
+        `  Runs Fetched: [${fetchedRuns}]`,
     );
 
     return runs;
@@ -203,14 +213,14 @@ export enum RunConclusion {
   Stale = "stale",
 }
 
-type WorkflowCompleted = {
+interface WorkflowCompleted {
   completed: true;
   conclusion?: RunConclusion;
-};
+}
 
-type WorkflowIncomplete = {
+interface WorkflowIncomplete {
   completed: false;
-};
+}
 
 export type RunResult = WorkflowCompleted | WorkflowIncomplete;
 
@@ -226,6 +236,7 @@ export async function getCheckId(
       check_suite_id: checkSuiteId,
     });
 
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (response.status !== 200) {
       throw new Error(
         `Failed to get Checks, expected 200 but received ${response.status}`,
@@ -235,9 +246,9 @@ export async function getCheckId(
     const checkIdsMap: Record<string, number | undefined> = Object.fromEntries(
       response.data.check_runs.map((check) => [check.name, check.id]),
     );
-    const checksWithIds = response.data.check_runs.map(
-      (check) => `${check.name} (${check.id})`,
-    );
+    const checksWithIds = response.data.check_runs
+      .map((check) => `${check.name} (${check.id})`)
+      .join(", ");
 
     core.debug(
       `Fetched Checks:\n` +
@@ -308,6 +319,7 @@ export async function getRunState(
         throw new Error("Unknown run type specified");
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (response.status !== 200) {
       throw new Error(
         `Failed to get run state, expected 200 but received ${response.status}`,
@@ -366,7 +378,7 @@ export async function getRunStatus(
 
     return {
       completed: true,
-      conclusion: conclusion || undefined,
+      conclusion: conclusion ?? undefined,
     };
   }
 

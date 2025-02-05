@@ -42,21 +42,21 @@ interface MockResponse {
 const mockOctokit = {
   rest: {
     checks: {
-      get: async (_req?: any): Promise<MockResponse> => {
+      get: (_req?: any): Promise<MockResponse> => {
         throw new Error("Should be mocked");
       },
-      listForSuite: async (_req?: any): Promise<MockResponse> => {
+      listForSuite: (_req?: any): Promise<MockResponse> => {
         throw new Error("Should be mocked");
       },
     },
     actions: {
-      getWorkflowRun: async (_req?: any): Promise<MockResponse> => {
+      getWorkflowRun: (_req?: any): Promise<MockResponse> => {
         throw new Error("Should be mocked");
       },
-      listRepoWorkflows: async (_req?: any): Promise<MockResponse> => {
+      listRepoWorkflows: (_req?: any): Promise<MockResponse> => {
         throw new Error("Should be mocked");
       },
-      listWorkflowRuns: async (_req?: any): Promise<MockResponse> => {
+      listWorkflowRuns: (_req?: any): Promise<MockResponse> => {
         throw new Error("Should be mocked");
       },
     },
@@ -85,6 +85,7 @@ describe("API", () => {
 
   beforeEach(() => {
     vi.spyOn(core, "getInput").mockReturnValue("");
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     vi.spyOn(github, "getOctokit").mockReturnValue(mockOctokit as any);
     mockContextProp("ref", mockRef);
     mockContextProp("repo", {
@@ -157,12 +158,14 @@ describe("API", () => {
       );
 
       await expect(getWorkflowId(workflowName)).rejects.toThrow(
-        `Failed to get Workflow ID for '${workflowName}', available workflows: [${mockData.workflows.map(
-          (workflow) =>
-            `${workflow.path.replace(/\.github\/workflows\//i, "")} (${
-              workflow.id
-            })`,
-        )}]`,
+        `Failed to get Workflow ID for '${workflowName}', available workflows: [${mockData.workflows
+          .map(
+            (workflow) =>
+              `${workflow.path.replace(/\.github\/workflows\//i, "")} (${
+                workflow.id
+              })`,
+          )
+          .join(", ")}]`,
       );
     });
 
@@ -431,7 +434,6 @@ describe("API", () => {
       const workflowRuns = await getWorkflowRuns(0);
 
       expect(workflowRuns).toHaveLength(runAttempts.length);
-      // eslint-disable-next-line github/array-foreach
       runAttempts.forEach((attempt, i) => {
         const workflowRun = workflowRuns[i];
         expect(workflowRun?.attempt).toStrictEqual(attempt.run_attempt);

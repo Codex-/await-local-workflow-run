@@ -1,5 +1,6 @@
 import * as core from "@actions/core";
 import { Duration } from "luxon";
+
 import { getConfig } from "./action.ts";
 import {
   getCheckId,
@@ -61,11 +62,14 @@ async function run(): Promise<void> {
         if (await checkRunStatus()) {
           return;
         }
-      } else if (checkRunStatus === undefined && workflowRunId !== undefined) {
+        continue;
+      }
+
+      if (workflowRunId !== undefined) {
         const safeWorkflowRunId = workflowRunId;
         if (checkRunId !== undefined) {
           const safeCheckRunId = checkRunId;
-          checkRunStatus = async () => {
+          checkRunStatus = async (): Promise<boolean> => {
             const runStatus = await getRunStatus(
               safeCheckRunId,
               RunType.CheckRun,
@@ -93,7 +97,7 @@ async function run(): Promise<void> {
             return false;
           };
         } else {
-          checkRunStatus = async () => {
+          checkRunStatus = async (): Promise<boolean> => {
             const runStatus = await getRunStatus(
               safeWorkflowRunId,
               RunType.WorkflowRun,
@@ -145,4 +149,6 @@ async function run(): Promise<void> {
   }
 }
 
-(() => run())();
+if (!process.env.VITEST) {
+  await run();
+}

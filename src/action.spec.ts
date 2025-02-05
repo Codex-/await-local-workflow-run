@@ -8,7 +8,7 @@ vi.mock("@actions/core");
 describe("Action", () => {
   describe("getConfig", () => {
     // Represent the process.env inputs.
-    let mockEnvConfig: any;
+    let mockEnvConfig: Record<string, string>;
 
     beforeEach(() => {
       mockEnvConfig = {
@@ -19,18 +19,18 @@ describe("Action", () => {
         poll_interval_ms: "5000",
       };
 
-      vi.spyOn(core, "getInput").mockImplementation((input: string) => {
+      vi.spyOn(core, "getInput").mockImplementation((input: string): string => {
         switch (input) {
           case "token":
-            return mockEnvConfig.token;
+            return mockEnvConfig.token ?? "";
           case "workflow":
-            return mockEnvConfig.workflow;
+            return mockEnvConfig.workflow ?? "";
           case "check_name":
-            return mockEnvConfig.checkName;
+            return mockEnvConfig.checkName ?? "";
           case "timeout_mins":
-            return mockEnvConfig.timeout_mins;
+            return mockEnvConfig.timeout_mins ?? "";
           case "poll_interval_ms":
-            return mockEnvConfig.poll_interval_ms;
+            return mockEnvConfig.poll_interval_ms ?? "";
           default:
             throw new Error("invalid input requested");
         }

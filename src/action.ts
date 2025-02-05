@@ -39,14 +39,16 @@ export function getConfig(): ActionConfig {
   return {
     token: core.getInput("token", { required: true }),
     workflow: core.getInput("workflow", { required: true }),
-    checkName: (() => {
+    checkName: ((): string | undefined => {
       const input = core.getInput("check_name");
       return input === "" ? undefined : input;
     })(),
     timeoutMins:
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       getNumberFromValue(core.getInput("timeout_mins")) ||
       WORKFLOW_TIMEOUT_MINUTES,
     pollIntervalMs:
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       getNumberFromValue(core.getInput("poll_interval_ms")) || POLL_INTERVAL_MS,
   };
 }
