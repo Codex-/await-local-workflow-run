@@ -7,7 +7,7 @@ import {
   describe,
   expect,
   it,
-  type SpyInstance,
+  type MockInstance,
   vi,
 } from "vitest";
 
@@ -373,7 +373,7 @@ describe("API", () => {
       workflow_runs: mockWorkflowRunsApiData,
     };
 
-    let listWorkflowRunsSpy: SpyInstance<[_req?: any], Promise<MockResponse>>;
+    let listWorkflowRunsSpy: MockInstance<[_req?: any], Promise<MockResponse>>;
 
     beforeEach(() => {
       listWorkflowRunsSpy = vi
