@@ -24,6 +24,7 @@ import {
   RunStatus,
   RunType,
 } from "./api.ts";
+import { mockLoggingFunctions } from "./test-utils/logging.mock.ts";
 
 vi.mock("@actions/core");
 let mockedContext: Context = {} as any;
@@ -64,6 +65,9 @@ const mockOctokit = {
 };
 
 describe("API", () => {
+  const { coreDebugLogMock, coreErrorLogMock, assertOnlyCalled } =
+    mockLoggingFunctions();
+
   const mockBranchName = "lanayru";
   const mockRef = `refs/heads/${mockBranchName}`;
   const mockSha = "1234567890123456789012345678901234567890";
@@ -83,7 +87,6 @@ describe("API", () => {
 
   beforeEach(() => {
     vi.spyOn(core, "getInput").mockReturnValue("");
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     vi.spyOn(github, "getOctokit").mockReturnValue(mockOctokit as any);
     mockContextProp("ref", mockRef);
     mockContextProp("repo", {
@@ -127,9 +130,22 @@ describe("API", () => {
         }),
       );
 
-      expect(await getWorkflowId("slice.yml")).toStrictEqual(
+      const getWorkflowRunIdPromise = getWorkflowId("slice.yml");
+
+      // Behaviour
+      await expect(getWorkflowRunIdPromise).resolves.toStrictEqual(
         mockData.workflows[2]?.id,
       );
+
+      // Logging
+      assertOnlyCalled(coreDebugLogMock);
+      expect(coreDebugLogMock).toHaveBeenCalledOnce();
+      expect(coreDebugLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+        "Fetched Workflows:
+          Repository: rich-clown/circus
+          Total Workflows: 3
+          Workflows: [cake.yml (0), pie.yml (1), slice.yml (2)]"
+      `);
     });
 
     it("should throw if a non-200 status is returned", async () => {
@@ -141,9 +157,22 @@ describe("API", () => {
         }),
       );
 
-      await expect(getWorkflowId("implode")).rejects.toThrow(
-        `Failed to get Workflows, expected 200 but received ${errorStatus}`,
+      const getWorkflowRunIdPromise = getWorkflowId("implode");
+
+      // Behaviour
+      await expect(
+        getWorkflowRunIdPromise,
+      ).rejects.toThrowErrorMatchingInlineSnapshot(
+        `[Error: Failed to get Workflows, expected 200 but received 401]`,
       );
+
+      // Logging
+      assertOnlyCalled(coreErrorLogMock, coreDebugLogMock);
+      expect(coreErrorLogMock).toHaveBeenCalledOnce();
+      expect(coreErrorLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(
+        `"getWorkflowId: An unexpected error has occurred: Failed to get Workflows, expected 200 but received 401"`,
+      );
+      expect(coreDebugLogMock).toHaveBeenCalledOnce();
     });
 
     it("should throw if a given workflow name cannot be found in the response", async () => {
@@ -155,15 +184,27 @@ describe("API", () => {
         }),
       );
 
-      await expect(getWorkflowId(workflowName)).rejects.toThrow(
-        `Failed to get Workflow ID for '${workflowName}', available workflows: [${mockData.workflows
-          .map(
-            (workflow) =>
-              `${workflow.path.replace(/\.github\/workflows\//i, "")} (${
-                workflow.id
-              })`,
-          )
-          .join(", ")}]`,
+      const getWorkflowRunIdPromise = getWorkflowId(workflowName);
+
+      // Behaviour
+      await expect(
+        getWorkflowRunIdPromise,
+      ).rejects.toThrowErrorMatchingInlineSnapshot(
+        `[Error: Failed to get Workflow ID for 'spoon', available workflows: [cake.yml (0), pie.yml (1), slice.yml (2)]]`,
+      );
+
+      // Logging
+      assertOnlyCalled(coreDebugLogMock, coreErrorLogMock);
+      expect(coreDebugLogMock).toHaveBeenCalledTimes(2);
+      expect(coreDebugLogMock.mock.calls[0]?.[0]).toMatchInlineSnapshot(`
+        "Fetched Workflows:
+          Repository: rich-clown/circus
+          Total Workflows: 3
+          Workflows: [cake.yml (0), pie.yml (1), slice.yml (2)]"
+      `);
+      expect(coreErrorLogMock).toHaveBeenCalledOnce();
+      expect(coreErrorLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(
+        `"getWorkflowId: An unexpected error has occurred: Failed to get Workflow ID for 'spoon', available workflows: [cake.yml (0), pie.yml (1), slice.yml (2)]"`,
       );
     });
 
@@ -179,8 +220,27 @@ describe("API", () => {
         }),
       );
 
-      await expect(getWorkflowId(workflowName)).rejects.toThrow(
-        `Failed to get Workflow ID for '${workflowName}', available workflows: []`,
+      const getWorkflowRunIdPromise = getWorkflowId(workflowName);
+
+      // Behaviour
+      await expect(
+        getWorkflowRunIdPromise,
+      ).rejects.toThrowErrorMatchingInlineSnapshot(
+        `[Error: Failed to get Workflow ID for 'slice', available workflows: []]`,
+      );
+
+      // Logging
+      assertOnlyCalled(coreDebugLogMock, coreErrorLogMock);
+      expect(coreDebugLogMock).toHaveBeenCalledTimes(2);
+      expect(coreDebugLogMock.mock.calls[0]?.[0]).toMatchInlineSnapshot(`
+        "Fetched Workflows:
+          Repository: rich-clown/circus
+          Total Workflows: 0
+          Workflows: []"
+      `);
+      expect(coreErrorLogMock).toHaveBeenCalledOnce();
+      expect(coreErrorLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(
+        `"getWorkflowId: An unexpected error has occurred: Failed to get Workflow ID for 'slice', available workflows: []"`,
       );
     });
   });
