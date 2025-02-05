@@ -376,7 +376,9 @@ describe("API", () => {
       workflow_runs: mockWorkflowRunsApiData,
     };
 
-    let listWorkflowRunsSpy: MockInstance<[_req?: any], Promise<MockResponse>>;
+    let listWorkflowRunsSpy: MockInstance<
+      typeof mockOctokit.rest.actions.listWorkflowRuns
+    >;
 
     beforeEach(() => {
       listWorkflowRunsSpy = vi
