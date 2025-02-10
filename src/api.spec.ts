@@ -272,23 +272,49 @@ describe("API", () => {
           status: RunStatus.InProgress,
         },
       ];
-      vi.spyOn(mockOctokit.rest.actions, "listWorkflowRuns").mockReturnValue(
-        Promise.resolve({
-          data: {
-            total_count: mockWorkflowRunsApiData.length,
-            workflow_runs: mockWorkflowRunsApiData,
-          },
-          status: 200,
-        }),
-      );
-      const run = await getWorkflowRun(0);
+      const listWorkflowRunsMock = vi
+        .spyOn(mockOctokit.rest.actions, "listWorkflowRuns")
+        .mockReturnValue(
+          Promise.resolve({
+            data: {
+              total_count: mockWorkflowRunsApiData.length,
+              workflow_runs: mockWorkflowRunsApiData,
+            },
+            status: 200,
+          }),
+        );
 
+      const getWorkflowRunPromise = getWorkflowRun(0);
+
+      // Behaviour
+      await expect(getWorkflowRunPromise).resolves.not.toThrow();
+      const run = await getWorkflowRunPromise;
       expect(run).toStrictEqual({
         id: mockWorkflowRunsApiData[0]?.id,
         attempt: mockWorkflowRunsApiData[0]?.run_attempt,
         checkSuiteId: mockWorkflowRunsApiData[0]?.check_suite_id,
         status: mockWorkflowRunsApiData[0]?.status,
       });
+      expect(listWorkflowRunsMock).toHaveBeenCalledOnce();
+
+      // Logging
+      assertOnlyCalled(coreDebugLogMock);
+      expect(coreDebugLogMock).toHaveBeenCalledTimes(2);
+      expect(coreDebugLogMock.mock.calls[0]?.[0]).toMatchInlineSnapshot(`
+        "Fetched Workflow Runs:
+          Repository: rich-clown/circus
+          Workflow ID: 0
+          Triggering SHA: 1234567890123456789012345678901234567890
+          Runs Fetched: [123456 (Attempt 1)]"
+      `);
+      expect(coreDebugLogMock.mock.calls[1]?.[0]).toMatchInlineSnapshot(`
+        "Workflow Run ID Found:
+          Workflow ID: 0
+          Run ID: 123456
+          Run Attempt: 1
+          Run Check Suite ID: 654321
+          Run Status: in_progress"
+      `);
     });
 
     it("should return undefined if it cannot find an ID", async () => {
@@ -301,18 +327,36 @@ describe("API", () => {
           status: RunStatus.InProgress,
         },
       ];
-      vi.spyOn(mockOctokit.rest.actions, "listWorkflowRuns").mockReturnValue(
-        Promise.resolve({
-          data: {
-            total_count: mockWorkflowRunsApiData.length,
-            workflow_runs: mockWorkflowRunsApiData,
-          },
-          status: 200,
-        }),
-      );
-      const run = await getWorkflowRun(0);
+      const listWorkflowRunsSpy = vi
+        .spyOn(mockOctokit.rest.actions, "listWorkflowRuns")
+        .mockReturnValue(
+          Promise.resolve({
+            data: {
+              total_count: mockWorkflowRunsApiData.length,
+              workflow_runs: mockWorkflowRunsApiData,
+            },
+            status: 200,
+          }),
+        );
 
+      const getWorkflowRunPromise = getWorkflowRun(0);
+
+      // Behaviour
+      await expect(getWorkflowRunPromise).resolves.not.toThrow();
+      const run = await getWorkflowRunPromise;
       expect(run).toBeUndefined();
+      expect(listWorkflowRunsSpy).toHaveBeenCalledOnce();
+
+      // Logging
+      assertOnlyCalled(coreDebugLogMock);
+      expect(coreDebugLogMock).toHaveBeenCalledOnce();
+      expect(coreDebugLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+        "Fetched Workflow Runs:
+          Repository: rich-clown/circus
+          Workflow ID: 0
+          Triggering SHA: 1234567890123456789012345678901234567890
+          Runs Fetched: []"
+      `);
     });
 
     it("should change to use the branch strategy if no runs are returned for a given ID", async () => {
@@ -346,7 +390,13 @@ describe("API", () => {
           }),
         );
 
-      expect(await getWorkflowRun(0)).toBeUndefined();
+      const getWorkflowRunPromise = getWorkflowRun(0);
+
+      // Behaviour
+      await expect(getWorkflowRunPromise).resolves.not.toThrow();
+      const run = await getWorkflowRunPromise;
+      expect(run).toBeUndefined();
+      expect(listWorkflowRunsSpy).toHaveBeenCalledOnce();
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       expect(Object.keys(listWorkflowRunsSpy.mock.calls[0]?.[0])).not.toContain(
         "branch",
@@ -361,6 +411,35 @@ describe("API", () => {
       expect(Object.keys(listWorkflowRunsSpy.mock.calls[1]?.[0])).toContain(
         "branch",
       );
+
+      // Logging
+      assertOnlyCalled(coreDebugLogMock);
+      expect(coreDebugLogMock).toHaveBeenCalledTimes(4);
+      expect(coreDebugLogMock.mock.calls[0]?.[0]).toMatchInlineSnapshot(`
+        "Fetched Workflow Runs:
+          Repository: rich-clown/circus
+          Workflow ID: 0
+          Triggering SHA: 1234567890123456789012345678901234567890
+          Runs Fetched: []"
+      `);
+      expect(coreDebugLogMock.mock.calls[1]?.[0]).toMatchInlineSnapshot(
+        `"getWorkflowRunIds: Filtered branch name: refs/heads/lanayru"`,
+      );
+      expect(coreDebugLogMock.mock.calls[2]?.[0]).toMatchInlineSnapshot(`
+        "Fetched Workflow Runs:
+          Repository: rich-clown/circus
+          Workflow ID: 0
+          Triggering SHA: 1234567890123456789012345678901234567890
+          Runs Fetched: [123456 (Attempt 1)]"
+      `);
+      expect(coreDebugLogMock.mock.calls[3]?.[0]).toMatchInlineSnapshot(`
+        "Workflow Run ID Found:
+          Workflow ID: 0
+          Run ID: 123456
+          Run Attempt: 1
+          Run Check Suite ID: 654321
+          Run Status: in_progress"
+      `);
     });
   });
 
