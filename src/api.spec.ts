@@ -123,12 +123,14 @@ describe("API", () => {
     };
 
     it("should return the workflow ID for a given workflow filename", async () => {
-      vi.spyOn(mockOctokit.rest.actions, "listRepoWorkflows").mockReturnValue(
-        Promise.resolve({
-          data: mockData,
-          status: 200,
-        }),
-      );
+      const listRepoWorkflowsMock = vi
+        .spyOn(mockOctokit.rest.actions, "listRepoWorkflows")
+        .mockReturnValue(
+          Promise.resolve({
+            data: mockData,
+            status: 200,
+          }),
+        );
 
       const getWorkflowRunIdPromise = getWorkflowId("slice.yml");
 
@@ -136,6 +138,7 @@ describe("API", () => {
       await expect(getWorkflowRunIdPromise).resolves.toStrictEqual(
         mockData.workflows[2]?.id,
       );
+      expect(listRepoWorkflowsMock).toHaveBeenCalledOnce();
 
       // Logging
       assertOnlyCalled(coreDebugLogMock);
@@ -150,12 +153,14 @@ describe("API", () => {
 
     it("should throw if a non-200 status is returned", async () => {
       const errorStatus = 401;
-      vi.spyOn(mockOctokit.rest.actions, "listRepoWorkflows").mockReturnValue(
-        Promise.resolve({
-          data: undefined,
-          status: errorStatus,
-        }),
-      );
+      const listRepoWorkflowsMock = vi
+        .spyOn(mockOctokit.rest.actions, "listRepoWorkflows")
+        .mockReturnValue(
+          Promise.resolve({
+            data: undefined,
+            status: errorStatus,
+          }),
+        );
 
       const getWorkflowRunIdPromise = getWorkflowId("implode");
 
@@ -165,6 +170,7 @@ describe("API", () => {
       ).rejects.toThrowErrorMatchingInlineSnapshot(
         `[Error: Failed to get Workflows, expected 200 but received 401]`,
       );
+      expect(listRepoWorkflowsMock).toHaveBeenCalledOnce();
 
       // Logging
       assertOnlyCalled(coreErrorLogMock, coreDebugLogMock);
@@ -177,12 +183,14 @@ describe("API", () => {
 
     it("should throw if a given workflow name cannot be found in the response", async () => {
       const workflowName = "spoon";
-      vi.spyOn(mockOctokit.rest.actions, "listRepoWorkflows").mockReturnValue(
-        Promise.resolve({
-          data: mockData,
-          status: 200,
-        }),
-      );
+      const listRepoWorkflowsMock = vi
+        .spyOn(mockOctokit.rest.actions, "listRepoWorkflows")
+        .mockReturnValue(
+          Promise.resolve({
+            data: mockData,
+            status: 200,
+          }),
+        );
 
       const getWorkflowRunIdPromise = getWorkflowId(workflowName);
 
@@ -192,6 +200,7 @@ describe("API", () => {
       ).rejects.toThrowErrorMatchingInlineSnapshot(
         `[Error: Failed to get Workflow ID for 'spoon', available workflows: [cake.yml (0), pie.yml (1), slice.yml (2)]]`,
       );
+      expect(listRepoWorkflowsMock).toHaveBeenCalledOnce();
 
       // Logging
       assertOnlyCalled(coreDebugLogMock, coreErrorLogMock);
@@ -210,15 +219,17 @@ describe("API", () => {
 
     it("should throw if the response returns no workflows", async () => {
       const workflowName = "slice";
-      vi.spyOn(mockOctokit.rest.actions, "listRepoWorkflows").mockReturnValue(
-        Promise.resolve({
-          data: {
-            total_count: 0,
-            workflows: [],
-          },
-          status: 200,
-        }),
-      );
+      const listRepoWorkflowsMock = vi
+        .spyOn(mockOctokit.rest.actions, "listRepoWorkflows")
+        .mockReturnValue(
+          Promise.resolve({
+            data: {
+              total_count: 0,
+              workflows: [],
+            },
+            status: 200,
+          }),
+        );
 
       const getWorkflowRunIdPromise = getWorkflowId(workflowName);
 
@@ -228,6 +239,7 @@ describe("API", () => {
       ).rejects.toThrowErrorMatchingInlineSnapshot(
         `[Error: Failed to get Workflow ID for 'slice', available workflows: []]`,
       );
+      expect(listRepoWorkflowsMock).toHaveBeenCalledOnce();
 
       // Logging
       assertOnlyCalled(coreDebugLogMock, coreErrorLogMock);
