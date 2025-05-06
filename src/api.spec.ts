@@ -2,6 +2,7 @@ import * as core from "@actions/core";
 import * as github from "@actions/github";
 import type { Context } from "@actions/github/lib/context.ts";
 import {
+  afterAll,
   afterEach,
   beforeEach,
   describe,
@@ -102,6 +103,10 @@ describe("API", () => {
   afterEach(() => {
     mockedContext = {} as any;
     vi.resetAllMocks();
+  });
+
+  afterAll(() => {
+    vi.restoreAllMocks();
   });
 
   describe("getWorkflowId", () => {
