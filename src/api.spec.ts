@@ -900,7 +900,18 @@ describe("API", () => {
       );
       const runID = await getCheckId(0, "ganon");
 
+      // Behaviour
       expect(runID).toStrictEqual(123456);
+
+      // Logging
+      assertOnlyCalled(coreDebugLogMock);
+      expect(coreDebugLogMock).toHaveBeenCalledTimes(1);
+      expect(coreDebugLogMock.mock.calls[0]?.[0]).toMatchInlineSnapshot(`
+        "Fetched Checks:
+          Repository: rich-clown/circus
+          Total Checks: 1
+          Checks: [ganon (123456)]"
+      `);
     });
 
     it("should throw an error if it cannot locate the requested check name", async () => {
@@ -920,8 +931,28 @@ describe("API", () => {
         }),
       );
 
-      await expect(() => getCheckId(0, "link")).rejects.toThrowError(
+      const getCheckIdPromise = getCheckId(0, "link");
+
+      // Behaviour
+      await expect(getCheckIdPromise).rejects.toThrowError(
         "Failed to get Check ID for 'link', available checks: [ganon (123456)]",
+      );
+
+      // Logging
+      assertOnlyCalled(coreErrorLogMock, coreDebugLogMock);
+      expect(coreErrorLogMock).toHaveBeenCalledOnce();
+      expect(coreErrorLogMock.mock.calls[0]?.[0]).toMatchInlineSnapshot(
+        `"getCheckId: An unexpected error has occurred: Failed to get Check ID for 'link', available checks: [ganon (123456)]"`,
+      );
+      expect(coreDebugLogMock).toHaveBeenCalledTimes(2);
+      expect(coreDebugLogMock.mock.calls[0]?.[0]).toMatchInlineSnapshot(`
+        "Fetched Checks:
+          Repository: rich-clown/circus
+          Total Checks: 1
+          Checks: [ganon (123456)]"
+      `);
+      expect(coreDebugLogMock.mock.calls[1]?.[0]).toContain(
+        "Error: Failed to get Check ID for 'link', available checks: [ganon (123456)]",
       );
     });
 
@@ -934,8 +965,22 @@ describe("API", () => {
         }),
       );
 
-      await expect(getCheckId(0, "")).rejects.toThrow(
+      const getCheckIdPromise = getCheckId(0, "");
+
+      // Behaviour
+      await expect(getCheckIdPromise).rejects.toThrow(
         `Failed to get Checks, expected 200 but received ${errorStatus}`,
+      );
+
+      // Logging
+      assertOnlyCalled(coreErrorLogMock, coreDebugLogMock);
+      expect(coreErrorLogMock).toHaveBeenCalledOnce();
+      expect(coreErrorLogMock.mock.calls[0]?.[0]).toMatchInlineSnapshot(
+        `"getCheckId: An unexpected error has occurred: Failed to get Checks, expected 200 but received 401"`,
+      );
+      expect(coreDebugLogMock).toHaveBeenCalledOnce();
+      expect(coreDebugLogMock.mock.calls[0]?.[0]).toContain(
+        "Error: Failed to get Checks, expected 200 but received 401",
       );
     });
   });
