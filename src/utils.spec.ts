@@ -27,7 +27,6 @@ vi.mock("@actions/github", () => ({
 }));
 
 describe("utils", () => {
-  /* eslint-disable no-redeclare */
   function mockContextProp(prop: "eventName", value: string): void;
   function mockContextProp(prop: "ref", value: string): void;
   function mockContextProp(prop: "sha", value: string): void;
@@ -41,7 +40,6 @@ describe("utils", () => {
       writable: true,
     });
   }
-  /* eslint-enable no-redeclare */
 
   afterEach(() => {
     mockedContext = {} as any;

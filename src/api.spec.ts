@@ -68,7 +68,6 @@ describe("API", () => {
   const mockRef = `refs/heads/${mockBranchName}`;
   const mockSha = "1234567890123456789012345678901234567890";
 
-  /* eslint-disable no-redeclare */
   function mockContextProp(prop: "ref", value: string): void;
   function mockContextProp(prop: "repo", value: Record<string, string>): void;
   function mockContextProp(prop: "sha", value: string): void;
@@ -81,7 +80,6 @@ describe("API", () => {
       writable: true,
     });
   }
-  /* eslint-enable no-redeclare */
 
   beforeEach(() => {
     vi.spyOn(core, "getInput").mockReturnValue("");
@@ -277,6 +275,7 @@ describe("API", () => {
         );
 
       expect(await getWorkflowRun(0)).toBeUndefined();
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       expect(Object.keys(listWorkflowRunsSpy.mock.calls[0]?.[0])).not.toContain(
         "branch",
       );
@@ -286,6 +285,7 @@ describe("API", () => {
         checkSuiteId: mockWorkflowRunsApiData[0]?.check_suite_id,
         status: mockWorkflowRunsApiData[0]?.status,
       });
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       expect(Object.keys(listWorkflowRunsSpy.mock.calls[1]?.[0])).toContain(
         "branch",
       );
