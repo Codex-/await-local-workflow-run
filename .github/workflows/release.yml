@@ -20,7 +20,7 @@ jobs:
           fetch-depth: 0 # Need history for changelog generation
       - uses: jdx/mise-action@v2
       - run: pnpm i
-      - run: pnpm run build
+      - run: pnpm build
         # We need to make sure the checked-in `index.mjs` actually matches what we expect it to be.
       - name: Compare the expected and actual dist/ directories
         run: |

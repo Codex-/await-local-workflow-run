@@ -107,7 +107,7 @@ export enum RunStatus {
   Completed = "completed",
 }
 
-export interface WorkflowRun {
+interface WorkflowRun {
   id: number;
   attempt: number;
   checkSuiteId?: number;
@@ -222,7 +222,7 @@ interface WorkflowIncomplete {
   completed: false;
 }
 
-export type RunResult = WorkflowCompleted | WorkflowIncomplete;
+type RunResult = WorkflowCompleted | WorkflowIncomplete;
 
 export async function getCheckId(
   checkSuiteId: number,
@@ -282,7 +282,7 @@ export enum RunType {
   CheckRun,
 }
 
-export interface RunState {
+interface RunState {
   status: RunStatus | null;
   conclusion: RunConclusion | null;
 }

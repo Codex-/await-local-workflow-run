@@ -19,12 +19,12 @@
     "build:bundle": "node ./esbuild.config.mjs",
     "build:types": "tsc",
     "format:check": "prettier --check **/*.ts",
-    "format": "pnpm run format:check -- --write",
+    "format": "pnpm format:check -- --write",
     "lint": "eslint .",
-    "lint:fix": "pnpm run lint --fix",
-    "release": "release-it",
+    "lint:fix": "pnpm lint --fix",
     "test": "vitest",
-    "test:coverage": "vitest --coverage"
+    "test:coverage": "vitest --coverage",
+    "knip": "knip"
   },
   "dependencies": {
     "@actions/core": "^1.11.1",
@@ -45,6 +45,7 @@
     "eslint-config-prettier": "^10.1.2",
     "eslint-import-resolver-typescript": "^4.3.4",
     "eslint-plugin-import-x": "^4.11.0",
+    "knip": "^5.54.1",
     "prettier": "3.5.3",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.32.0",

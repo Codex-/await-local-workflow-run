@@ -13,17 +13,17 @@ jobs:
       - uses: jdx/mise-action@v2
       - run: pnpm i
       - name: build
-        run: pnpm run build:types
+        run: pnpm build:types
       - name: test
         id: test
         if: ${{ always() }}
-        run: pnpm run test
+        run: pnpm test
       - name: lint
         if: ${{ always() }}
-        run: pnpm run lint
+        run: pnpm lint
       - name: style
         if: ${{ always() }}
-        run: pnpm run format:check
+        run: pnpm format:check
   codecov: # Send only a single coverage report per run
     needs: [build]
     timeout-minutes: 15
@@ -35,8 +35,21 @@ jobs:
       - uses: jdx/mise-action@v2
       - run: pnpm i
       - name: test
-        run: pnpm run test:coverage
+        run: pnpm test:coverage
       - name: codecov
         uses: codecov/codecov-action@v5
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+  knip-report:
+    if: ${{ github.event_name == 'pull_request' }}
+    needs: [build]
+    runs-on: ubuntu-latest
+    permissions:
+      checks: write
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+      - run: pnpm i
+      - uses: codex-/knip-reporter@v2
