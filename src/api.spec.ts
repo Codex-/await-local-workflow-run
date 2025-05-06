@@ -726,7 +726,7 @@ describe("API", () => {
       expect(workflowRun).toBeDefined();
       expect(requestObj.created).toBeDefined();
       expect(typeof requestObj.created).toStrictEqual("string");
-      expect(requestObj.created !== "").toBeTruthy();
+      expect(requestObj.created).not.toStrictEqual("");
 
       // Logging
       assertOnlyCalled(coreDebugLogMock);
@@ -1132,14 +1132,23 @@ describe("API", () => {
           }),
         );
 
-        const runStatus = await getRunStatus(0, RunType.WorkflowRun);
+        const getRunStatusPromise = getRunStatus(0, RunType.WorkflowRun);
 
-        expect(runStatus.completed).toBeTruthy();
+        // Behaviour
+        await expect(getRunStatusPromise).resolves.not.toThrow();
+        const runStatus = await getRunStatusPromise;
+        expect(runStatus.completed).toStrictEqual(true);
         if (runStatus.completed) {
           expect(runStatus.conclusion).toStrictEqual(RunConclusion.Cancelled);
-        } else {
-          throw new Error("should be completed");
         }
+
+        // Logging
+        assertOnlyCalled(coreErrorLogMock, coreDebugLogMock);
+        expect(coreErrorLogMock).toHaveBeenCalledOnce();
+        expect(coreErrorLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(
+          `"Run has failed with conclusion: cancelled"`,
+        );
+        expect(coreDebugLogMock).toHaveBeenCalledOnce();
       });
 
       it("should not set a failure status if the conclusion is a success", async () => {
@@ -1157,9 +1166,23 @@ describe("API", () => {
           .spyOn(core, "setFailed")
           .mockImplementation(() => undefined);
 
-        await getRunStatus(0, RunType.WorkflowRun);
+        const getRunStatusPromise = getRunStatus(0, RunType.WorkflowRun);
 
+        // Behaviour
+        await expect(getRunStatusPromise).resolves.not.toThrow();
         expect(coreSetFailedSpy).not.toBeCalled();
+
+        // Logging
+        assertOnlyCalled(coreDebugLogMock);
+        expect(coreDebugLogMock).toHaveBeenCalledOnce();
+        expect(coreDebugLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+          "Fetched Run:
+            Repository: rich-clown/circus
+            Run ID: 0
+            Run Type: Workflow
+            Status: completed
+            Conclusion: success"
+        `);
       });
 
       it("should set the status to non-success when the conclusion is not a success", async () => {
@@ -1177,11 +1200,20 @@ describe("API", () => {
           .spyOn(core, "setFailed")
           .mockImplementation(() => undefined);
 
-        await getRunStatus(0, RunType.WorkflowRun);
-
+        // Behaviour
+        const getRunStatusPromise = getRunStatus(0, RunType.WorkflowRun);
+        await expect(getRunStatusPromise).resolves.not.toThrow();
         expect(coreSetFailedSpy.mock.calls[0]?.[0]).toStrictEqual(
           RunConclusion.Failure,
         );
+
+        // Logging
+        assertOnlyCalled(coreErrorLogMock, coreDebugLogMock);
+        expect(coreErrorLogMock).toHaveBeenCalledOnce();
+        expect(coreErrorLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(
+          `"Run has failed with conclusion: failure"`,
+        );
+        expect(coreDebugLogMock).toHaveBeenCalledOnce();
       });
 
       it("should set the status to non-success when the conclusion is unknown", async () => {
@@ -1200,11 +1232,25 @@ describe("API", () => {
           .spyOn(core, "setFailed")
           .mockImplementation(() => undefined);
 
-        await getRunStatus(0, RunType.WorkflowRun);
+        const getRunStatusPromise = getRunStatus(0, RunType.WorkflowRun);
 
+        // Behaviour
+        await expect(getRunStatusPromise).resolves.not.toThrow();
         expect(coreSetFailedSpy.mock.calls[0]?.[0]).toStrictEqual(
           `Unknown conclusion: ${unknownStatus}`,
         );
+
+        // Logging
+        assertOnlyCalled(coreDebugLogMock);
+        expect(coreDebugLogMock).toHaveBeenCalledOnce();
+        expect(coreDebugLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+          "Fetched Run:
+            Repository: rich-clown/circus
+            Run ID: 0
+            Run Type: Workflow
+            Status: completed
+            Conclusion: Clown Car?"
+        `);
       });
 
       it("should return with completed set to false when not completed", async () => {
@@ -1218,12 +1264,23 @@ describe("API", () => {
           }),
         );
 
-        const runStatus = await getRunStatus(0, RunType.WorkflowRun);
+        const getRunStatusPromise = getRunStatus(0, RunType.WorkflowRun);
 
-        expect(runStatus.completed).toBeFalsy();
-        if (runStatus.completed) {
-          throw new Error("should be not be completed");
-        }
+        // Behaviour
+        const runStatus = await getRunStatusPromise;
+        expect(runStatus.completed).toStrictEqual(false);
+
+        // Logging
+        assertOnlyCalled(coreDebugLogMock);
+        expect(coreDebugLogMock).toHaveBeenCalledOnce();
+        expect(coreDebugLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+          "Fetched Run:
+            Repository: rich-clown/circus
+            Run ID: 0
+            Run Type: Workflow
+            Status: queued
+            Conclusion: undefined"
+        `);
       });
     });
 
@@ -1240,14 +1297,24 @@ describe("API", () => {
           }),
         );
 
-        const runStatus = await getRunStatus(0, RunType.CheckRun);
+        const getRunStatusPromise = getRunStatus(0, RunType.CheckRun);
 
-        expect(runStatus.completed).toBeTruthy();
+        // Behaviour
+        const runStatus = await getRunStatusPromise;
+        expect(runStatus.completed).toStrictEqual(true);
         if (runStatus.completed) {
           expect(runStatus.conclusion).toStrictEqual(RunConclusion.Cancelled);
         } else {
           throw new Error("should be completed");
         }
+
+        // Logging
+        assertOnlyCalled(coreErrorLogMock, coreDebugLogMock);
+        expect(coreErrorLogMock).toHaveBeenCalledOnce();
+        expect(coreErrorLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(
+          `"Run has failed with conclusion: cancelled"`,
+        );
+        expect(coreDebugLogMock).toHaveBeenCalledOnce();
       });
 
       it("should not set a failure status if the conclusion is a success", async () => {
@@ -1265,9 +1332,23 @@ describe("API", () => {
           .spyOn(core, "setFailed")
           .mockImplementation(() => undefined);
 
-        await getRunStatus(0, RunType.CheckRun);
+        const getRunStatusPromise = getRunStatus(0, RunType.CheckRun);
 
+        // Behaviour
+        await expect(getRunStatusPromise).resolves.not.toThrow();
         expect(coreSetFailedSpy).not.toBeCalled();
+
+        // Logging
+        assertOnlyCalled(coreDebugLogMock);
+        expect(coreDebugLogMock).toHaveBeenCalledOnce();
+        expect(coreDebugLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+          "Fetched Run:
+            Repository: rich-clown/circus
+            Run ID: 0
+            Run Type: Check
+            Status: completed
+            Conclusion: success"
+        `);
       });
 
       it("should set the status to non-success when the conclusion is not a success", async () => {
@@ -1285,11 +1366,21 @@ describe("API", () => {
           .spyOn(core, "setFailed")
           .mockImplementation(() => undefined);
 
-        await getRunStatus(0, RunType.CheckRun);
+        const getRunStatusPromise = getRunStatus(0, RunType.CheckRun);
 
+        // Behaviour
+        await expect(getRunStatusPromise).resolves.not.toThrow();
         expect(coreSetFailedSpy.mock.calls[0]?.[0]).toStrictEqual(
           RunConclusion.Failure,
         );
+
+        // Logging
+        assertOnlyCalled(coreErrorLogMock, coreDebugLogMock);
+        expect(coreErrorLogMock).toHaveBeenCalledOnce();
+        expect(coreErrorLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(
+          `"Run has failed with conclusion: failure"`,
+        );
+        expect(coreDebugLogMock).toHaveBeenCalledOnce();
       });
 
       it("should set the status to non-success when the conclusion is unknown", async () => {
@@ -1308,11 +1399,25 @@ describe("API", () => {
           .spyOn(core, "setFailed")
           .mockImplementation(() => undefined);
 
-        await getRunStatus(0, RunType.CheckRun);
+        const getRunStatusPromise = getRunStatus(0, RunType.CheckRun);
 
+        // Behaviour
+        await expect(getRunStatusPromise).resolves.not.toThrow();
         expect(coreSetFailedSpy.mock.calls[0]?.[0]).toStrictEqual(
           `Unknown conclusion: ${unknownStatus}`,
         );
+
+        // Logging
+        assertOnlyCalled(coreDebugLogMock);
+        expect(coreDebugLogMock).toHaveBeenCalledOnce();
+        expect(coreDebugLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+          "Fetched Run:
+            Repository: rich-clown/circus
+            Run ID: 0
+            Run Type: Check
+            Status: completed
+            Conclusion: Clown Car?"
+        `);
       });
 
       it("should return with completed set to false when not completed", async () => {
@@ -1326,12 +1431,24 @@ describe("API", () => {
           }),
         );
 
-        const runStatus = await getRunStatus(0, RunType.CheckRun);
+        const getRunStatusPromise = getRunStatus(0, RunType.CheckRun);
 
-        expect(runStatus.completed).toBeFalsy();
-        if (runStatus.completed) {
-          throw new Error("should be not be completed");
-        }
+        // Behaviour
+        await expect(getRunStatusPromise).resolves.not.toThrow();
+        const runStatus = await getRunStatusPromise;
+        expect(runStatus.completed).toStrictEqual(false);
+
+        // Logging
+        assertOnlyCalled(coreDebugLogMock);
+        expect(coreDebugLogMock).toHaveBeenCalledOnce();
+        expect(coreDebugLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+          "Fetched Run:
+            Repository: rich-clown/circus
+            Run ID: 0
+            Run Type: Check
+            Status: queued
+            Conclusion: undefined"
+        `);
       });
     });
   });
