@@ -951,9 +951,6 @@ describe("API", () => {
           Total Checks: 1
           Checks: [ganon (123456)]"
       `);
-      expect(coreDebugLogMock.mock.calls[1]?.[0]).toContain(
-        "Error: Failed to get Check ID for 'link', available checks: [ganon (123456)]",
-      );
     });
 
     it("should throw if a non-200 status is returned", async () => {
@@ -979,17 +976,25 @@ describe("API", () => {
         `"getCheckId: An unexpected error has occurred: Failed to get Checks, expected 200 but received 401"`,
       );
       expect(coreDebugLogMock).toHaveBeenCalledOnce();
-      expect(coreDebugLogMock.mock.calls[0]?.[0]).toContain(
-        "Error: Failed to get Checks, expected 200 but received 401",
-      );
     });
   });
 
   describe("getRunState", () => {
     it("should throw if an unknown run type is specified", async () => {
-      await expect(() =>
-        getRunState(123456, -1 as RunType),
-      ).rejects.toThrowError("Unknown run type specified");
+      const getRunStatePromise = getRunState(123456, -1 as RunType);
+
+      // Behaviour
+      await expect(getRunStatePromise).rejects.toThrowError(
+        "Unknown run type specified",
+      );
+
+      // Logging
+      assertOnlyCalled(coreErrorLogMock, coreDebugLogMock);
+      expect(coreErrorLogMock).toHaveBeenCalledOnce();
+      expect(coreErrorLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(
+        `"getRunState: An unexpected error has occurred: Unknown run type specified"`,
+      );
+      expect(coreDebugLogMock).toHaveBeenCalledOnce();
     });
 
     describe("workflow", () => {
@@ -1005,9 +1010,25 @@ describe("API", () => {
           }),
         );
 
-        const state = await getRunState(123456, RunType.WorkflowRun);
+        const getRunStatePromise = getRunState(123456, RunType.WorkflowRun);
+
+        // Behaviour
+        await expect(getRunStatePromise).resolves.not.toThrow();
+        const state = await getRunStatePromise;
         expect(state.conclusion).toStrictEqual(mockData.conclusion);
         expect(state.status).toStrictEqual(mockData.status);
+
+        // Logging
+        assertOnlyCalled(coreDebugLogMock);
+        expect(coreDebugLogMock).toHaveBeenCalledOnce();
+        expect(coreDebugLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+          "Fetched Run:
+            Repository: rich-clown/circus
+            Run ID: 123456
+            Run Type: Workflow
+            Status: completed
+            Conclusion: cancelled"
+        `);
       });
 
       it("should throw if a non-200 status is returned", async () => {
@@ -1019,9 +1040,20 @@ describe("API", () => {
           }),
         );
 
-        await expect(getRunState(0, RunType.WorkflowRun)).rejects.toThrow(
+        const getRunStatePromise = getRunState(0, RunType.WorkflowRun);
+
+        // Behaviour
+        await expect(getRunStatePromise).rejects.toThrow(
           `Failed to get run state, expected 200 but received ${errorStatus}`,
         );
+
+        // Logging
+        assertOnlyCalled(coreErrorLogMock, coreDebugLogMock);
+        expect(coreErrorLogMock).toHaveBeenCalledOnce();
+        expect(coreErrorLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(
+          `"getRunState: An unexpected error has occurred: Failed to get run state, expected 200 but received 401"`,
+        );
+        expect(coreDebugLogMock).toHaveBeenCalledOnce();
       });
     });
 
@@ -1038,9 +1070,25 @@ describe("API", () => {
           }),
         );
 
-        const state = await getRunState(123456, RunType.WorkflowRun);
+        const getRunStatePromise = getRunState(123456, RunType.WorkflowRun);
+
+        // Behaviour
+        await expect(getRunStatePromise).resolves.not.toThrow();
+        const state = await getRunStatePromise;
         expect(state.conclusion).toStrictEqual(mockData.conclusion);
         expect(state.status).toStrictEqual(mockData.status);
+
+        // Logging
+        assertOnlyCalled(coreDebugLogMock);
+        expect(coreDebugLogMock).toHaveBeenCalledOnce();
+        expect(coreDebugLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+          "Fetched Run:
+            Repository: rich-clown/circus
+            Run ID: 123456
+            Run Type: Workflow
+            Status: completed
+            Conclusion: cancelled"
+        `);
       });
 
       it("should throw if a non-200 status is returned", async () => {
@@ -1052,9 +1100,20 @@ describe("API", () => {
           }),
         );
 
-        await expect(getRunState(0, RunType.WorkflowRun)).rejects.toThrow(
+        const getRunStatePromise = getRunState(0, RunType.WorkflowRun);
+
+        // Behaviour
+        await expect(getRunStatePromise).rejects.toThrow(
           `Failed to get run state, expected 200 but received ${errorStatus}`,
         );
+
+        // Logging
+        assertOnlyCalled(coreErrorLogMock, coreDebugLogMock);
+        expect(coreErrorLogMock).toHaveBeenCalledOnce();
+        expect(coreErrorLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(
+          `"getRunState: An unexpected error has occurred: Failed to get run state, expected 200 but received 401"`,
+        );
+        expect(coreDebugLogMock).toHaveBeenCalledOnce();
       });
     });
   });
