@@ -2,6 +2,7 @@ import * as core from "@actions/core";
 import * as github from "@actions/github";
 import type { Context } from "@actions/github/lib/context.ts";
 import {
+  afterAll,
   afterEach,
   beforeEach,
   describe,
@@ -24,6 +25,7 @@ import {
   RunStatus,
   RunType,
 } from "./api.ts";
+import { mockLoggingFunctions } from "./test-utils/logging.mock.ts";
 
 vi.mock("@actions/core");
 let mockedContext: Context = {} as any;
@@ -64,6 +66,9 @@ const mockOctokit = {
 };
 
 describe("API", () => {
+  const { coreDebugLogMock, coreErrorLogMock, assertOnlyCalled } =
+    mockLoggingFunctions();
+
   const mockBranchName = "lanayru";
   const mockRef = `refs/heads/${mockBranchName}`;
   const mockSha = "1234567890123456789012345678901234567890";
@@ -97,6 +102,10 @@ describe("API", () => {
 
   afterEach(() => {
     mockedContext = {} as any;
+    vi.resetAllMocks();
+  });
+
+  afterAll(() => {
     vi.restoreAllMocks();
   });
 
@@ -120,67 +129,136 @@ describe("API", () => {
     };
 
     it("should return the workflow ID for a given workflow filename", async () => {
-      vi.spyOn(mockOctokit.rest.actions, "listRepoWorkflows").mockReturnValue(
-        Promise.resolve({
-          data: mockData,
-          status: 200,
-        }),
-      );
+      const listRepoWorkflowsMock = vi
+        .spyOn(mockOctokit.rest.actions, "listRepoWorkflows")
+        .mockReturnValue(
+          Promise.resolve({
+            data: mockData,
+            status: 200,
+          }),
+        );
 
-      expect(await getWorkflowId("slice.yml")).toStrictEqual(
+      const getWorkflowRunIdPromise = getWorkflowId("slice.yml");
+
+      // Behaviour
+      await expect(getWorkflowRunIdPromise).resolves.toStrictEqual(
         mockData.workflows[2]?.id,
       );
+      expect(listRepoWorkflowsMock).toHaveBeenCalledOnce();
+
+      // Logging
+      assertOnlyCalled(coreDebugLogMock);
+      expect(coreDebugLogMock).toHaveBeenCalledOnce();
+      expect(coreDebugLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+        "Fetched Workflows:
+          Repository: rich-clown/circus
+          Total Workflows: 3
+          Workflows: [cake.yml (0), pie.yml (1), slice.yml (2)]"
+      `);
     });
 
     it("should throw if a non-200 status is returned", async () => {
       const errorStatus = 401;
-      vi.spyOn(mockOctokit.rest.actions, "listRepoWorkflows").mockReturnValue(
-        Promise.resolve({
-          data: undefined,
-          status: errorStatus,
-        }),
-      );
+      const listRepoWorkflowsMock = vi
+        .spyOn(mockOctokit.rest.actions, "listRepoWorkflows")
+        .mockReturnValue(
+          Promise.resolve({
+            data: undefined,
+            status: errorStatus,
+          }),
+        );
 
-      await expect(getWorkflowId("implode")).rejects.toThrow(
-        `Failed to get Workflows, expected 200 but received ${errorStatus}`,
+      const getWorkflowRunIdPromise = getWorkflowId("implode");
+
+      // Behaviour
+      await expect(
+        getWorkflowRunIdPromise,
+      ).rejects.toThrowErrorMatchingInlineSnapshot(
+        `[Error: Failed to get Workflows, expected 200 but received 401]`,
       );
+      expect(listRepoWorkflowsMock).toHaveBeenCalledOnce();
+
+      // Logging
+      assertOnlyCalled(coreErrorLogMock, coreDebugLogMock);
+      expect(coreErrorLogMock).toHaveBeenCalledOnce();
+      expect(coreErrorLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(
+        `"getWorkflowId: An unexpected error has occurred: Failed to get Workflows, expected 200 but received 401"`,
+      );
+      expect(coreDebugLogMock).toHaveBeenCalledOnce();
     });
 
     it("should throw if a given workflow name cannot be found in the response", async () => {
       const workflowName = "spoon";
-      vi.spyOn(mockOctokit.rest.actions, "listRepoWorkflows").mockReturnValue(
-        Promise.resolve({
-          data: mockData,
-          status: 200,
-        }),
-      );
+      const listRepoWorkflowsMock = vi
+        .spyOn(mockOctokit.rest.actions, "listRepoWorkflows")
+        .mockReturnValue(
+          Promise.resolve({
+            data: mockData,
+            status: 200,
+          }),
+        );
 
-      await expect(getWorkflowId(workflowName)).rejects.toThrow(
-        `Failed to get Workflow ID for '${workflowName}', available workflows: [${mockData.workflows
-          .map(
-            (workflow) =>
-              `${workflow.path.replace(/\.github\/workflows\//i, "")} (${
-                workflow.id
-              })`,
-          )
-          .join(", ")}]`,
+      const getWorkflowRunIdPromise = getWorkflowId(workflowName);
+
+      // Behaviour
+      await expect(
+        getWorkflowRunIdPromise,
+      ).rejects.toThrowErrorMatchingInlineSnapshot(
+        `[Error: Failed to get Workflow ID for 'spoon', available workflows: [cake.yml (0), pie.yml (1), slice.yml (2)]]`,
+      );
+      expect(listRepoWorkflowsMock).toHaveBeenCalledOnce();
+
+      // Logging
+      assertOnlyCalled(coreDebugLogMock, coreErrorLogMock);
+      expect(coreDebugLogMock).toHaveBeenCalledTimes(2);
+      expect(coreDebugLogMock.mock.calls[0]?.[0]).toMatchInlineSnapshot(`
+        "Fetched Workflows:
+          Repository: rich-clown/circus
+          Total Workflows: 3
+          Workflows: [cake.yml (0), pie.yml (1), slice.yml (2)]"
+      `);
+      expect(coreErrorLogMock).toHaveBeenCalledOnce();
+      expect(coreErrorLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(
+        `"getWorkflowId: An unexpected error has occurred: Failed to get Workflow ID for 'spoon', available workflows: [cake.yml (0), pie.yml (1), slice.yml (2)]"`,
       );
     });
 
     it("should throw if the response returns no workflows", async () => {
       const workflowName = "slice";
-      vi.spyOn(mockOctokit.rest.actions, "listRepoWorkflows").mockReturnValue(
-        Promise.resolve({
-          data: {
-            total_count: 0,
-            workflows: [],
-          },
-          status: 200,
-        }),
-      );
+      const listRepoWorkflowsMock = vi
+        .spyOn(mockOctokit.rest.actions, "listRepoWorkflows")
+        .mockReturnValue(
+          Promise.resolve({
+            data: {
+              total_count: 0,
+              workflows: [],
+            },
+            status: 200,
+          }),
+        );
 
-      await expect(getWorkflowId(workflowName)).rejects.toThrow(
-        `Failed to get Workflow ID for '${workflowName}', available workflows: []`,
+      const getWorkflowRunIdPromise = getWorkflowId(workflowName);
+
+      // Behaviour
+      await expect(
+        getWorkflowRunIdPromise,
+      ).rejects.toThrowErrorMatchingInlineSnapshot(
+        `[Error: Failed to get Workflow ID for 'slice', available workflows: []]`,
+      );
+      expect(listRepoWorkflowsMock).toHaveBeenCalledOnce();
+
+      // Logging
+      assertOnlyCalled(coreDebugLogMock, coreErrorLogMock);
+      expect(coreDebugLogMock).toHaveBeenCalledTimes(2);
+      expect(coreDebugLogMock.mock.calls[0]?.[0]).toMatchInlineSnapshot(`
+        "Fetched Workflows:
+          Repository: rich-clown/circus
+          Total Workflows: 0
+          Workflows: []"
+      `);
+      expect(coreErrorLogMock).toHaveBeenCalledOnce();
+      expect(coreErrorLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(
+        `"getWorkflowId: An unexpected error has occurred: Failed to get Workflow ID for 'slice', available workflows: []"`,
       );
     });
   });
@@ -200,23 +278,49 @@ describe("API", () => {
           status: RunStatus.InProgress,
         },
       ];
-      vi.spyOn(mockOctokit.rest.actions, "listWorkflowRuns").mockReturnValue(
-        Promise.resolve({
-          data: {
-            total_count: mockWorkflowRunsApiData.length,
-            workflow_runs: mockWorkflowRunsApiData,
-          },
-          status: 200,
-        }),
-      );
-      const run = await getWorkflowRun(0);
+      const listWorkflowRunsMock = vi
+        .spyOn(mockOctokit.rest.actions, "listWorkflowRuns")
+        .mockReturnValue(
+          Promise.resolve({
+            data: {
+              total_count: mockWorkflowRunsApiData.length,
+              workflow_runs: mockWorkflowRunsApiData,
+            },
+            status: 200,
+          }),
+        );
 
+      const getWorkflowRunPromise = getWorkflowRun(0);
+
+      // Behaviour
+      await expect(getWorkflowRunPromise).resolves.not.toThrow();
+      const run = await getWorkflowRunPromise;
       expect(run).toStrictEqual({
         id: mockWorkflowRunsApiData[0]?.id,
         attempt: mockWorkflowRunsApiData[0]?.run_attempt,
         checkSuiteId: mockWorkflowRunsApiData[0]?.check_suite_id,
         status: mockWorkflowRunsApiData[0]?.status,
       });
+      expect(listWorkflowRunsMock).toHaveBeenCalledOnce();
+
+      // Logging
+      assertOnlyCalled(coreDebugLogMock);
+      expect(coreDebugLogMock).toHaveBeenCalledTimes(2);
+      expect(coreDebugLogMock.mock.calls[0]?.[0]).toMatchInlineSnapshot(`
+        "Fetched Workflow Runs:
+          Repository: rich-clown/circus
+          Workflow ID: 0
+          Triggering SHA: 1234567890123456789012345678901234567890
+          Runs Fetched: [123456 (Attempt 1)]"
+      `);
+      expect(coreDebugLogMock.mock.calls[1]?.[0]).toMatchInlineSnapshot(`
+        "Workflow Run ID Found:
+          Workflow ID: 0
+          Run ID: 123456
+          Run Attempt: 1
+          Run Check Suite ID: 654321
+          Run Status: in_progress"
+      `);
     });
 
     it("should return undefined if it cannot find an ID", async () => {
@@ -229,18 +333,36 @@ describe("API", () => {
           status: RunStatus.InProgress,
         },
       ];
-      vi.spyOn(mockOctokit.rest.actions, "listWorkflowRuns").mockReturnValue(
-        Promise.resolve({
-          data: {
-            total_count: mockWorkflowRunsApiData.length,
-            workflow_runs: mockWorkflowRunsApiData,
-          },
-          status: 200,
-        }),
-      );
-      const run = await getWorkflowRun(0);
+      const listWorkflowRunsSpy = vi
+        .spyOn(mockOctokit.rest.actions, "listWorkflowRuns")
+        .mockReturnValue(
+          Promise.resolve({
+            data: {
+              total_count: mockWorkflowRunsApiData.length,
+              workflow_runs: mockWorkflowRunsApiData,
+            },
+            status: 200,
+          }),
+        );
 
+      const getWorkflowRunPromise = getWorkflowRun(0);
+
+      // Behaviour
+      await expect(getWorkflowRunPromise).resolves.not.toThrow();
+      const run = await getWorkflowRunPromise;
       expect(run).toBeUndefined();
+      expect(listWorkflowRunsSpy).toHaveBeenCalledOnce();
+
+      // Logging
+      assertOnlyCalled(coreDebugLogMock);
+      expect(coreDebugLogMock).toHaveBeenCalledOnce();
+      expect(coreDebugLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+        "Fetched Workflow Runs:
+          Repository: rich-clown/circus
+          Workflow ID: 0
+          Triggering SHA: 1234567890123456789012345678901234567890
+          Runs Fetched: []"
+      `);
     });
 
     it("should change to use the branch strategy if no runs are returned for a given ID", async () => {
@@ -274,7 +396,13 @@ describe("API", () => {
           }),
         );
 
-      expect(await getWorkflowRun(0)).toBeUndefined();
+      const getWorkflowRunPromise = getWorkflowRun(0);
+
+      // Behaviour
+      await expect(getWorkflowRunPromise).resolves.not.toThrow();
+      const run = await getWorkflowRunPromise;
+      expect(run).toBeUndefined();
+      expect(listWorkflowRunsSpy).toHaveBeenCalledOnce();
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       expect(Object.keys(listWorkflowRunsSpy.mock.calls[0]?.[0])).not.toContain(
         "branch",
@@ -289,6 +417,35 @@ describe("API", () => {
       expect(Object.keys(listWorkflowRunsSpy.mock.calls[1]?.[0])).toContain(
         "branch",
       );
+
+      // Logging
+      assertOnlyCalled(coreDebugLogMock);
+      expect(coreDebugLogMock).toHaveBeenCalledTimes(4);
+      expect(coreDebugLogMock.mock.calls[0]?.[0]).toMatchInlineSnapshot(`
+        "Fetched Workflow Runs:
+          Repository: rich-clown/circus
+          Workflow ID: 0
+          Triggering SHA: 1234567890123456789012345678901234567890
+          Runs Fetched: []"
+      `);
+      expect(coreDebugLogMock.mock.calls[1]?.[0]).toMatchInlineSnapshot(
+        `"getWorkflowRunIds: Filtered branch name: refs/heads/lanayru"`,
+      );
+      expect(coreDebugLogMock.mock.calls[2]?.[0]).toMatchInlineSnapshot(`
+        "Fetched Workflow Runs:
+          Repository: rich-clown/circus
+          Workflow ID: 0
+          Triggering SHA: 1234567890123456789012345678901234567890
+          Runs Fetched: [123456 (Attempt 1)]"
+      `);
+      expect(coreDebugLogMock.mock.calls[3]?.[0]).toMatchInlineSnapshot(`
+        "Workflow Run ID Found:
+          Workflow ID: 0
+          Run ID: 123456
+          Run Attempt: 1
+          Run Check Suite ID: 654321
+          Run Status: in_progress"
+      `);
     });
   });
 
@@ -396,13 +553,28 @@ describe("API", () => {
     });
 
     it("should get the run IDs for a given workflow ID filtered by the commit sha", async () => {
-      const workflowRuns = await getWorkflowRuns(0);
+      const getWorkflowRunsPromise = getWorkflowRuns(0);
 
+      // Behaviour
+      await expect(getWorkflowRunsPromise).resolves.not.toThrow();
+      const workflowRuns = await getWorkflowRunsPromise;
       expect(workflowRuns).toHaveLength(
         mockWorkflowRunsApiData.filter(
           (workflow) => workflow.head_sha === mockSha,
         ).length,
       );
+      expect(listWorkflowRunsSpy).toHaveBeenCalledOnce();
+
+      // Logging
+      assertOnlyCalled(coreDebugLogMock);
+      expect(coreDebugLogMock).toHaveBeenCalledOnce();
+      expect(coreDebugLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+        "Fetched Workflow Runs:
+          Repository: rich-clown/circus
+          Workflow ID: 0
+          Triggering SHA: 1234567890123456789012345678901234567890
+          Runs Fetched: [9 (Attempt 3), 7 (Attempt 2), 9 (Attempt 2), 4 (Attempt 1), 1 (Attempt 0)]"
+      `);
     });
 
     it("should have the highest run attempt first", async () => {
@@ -414,9 +586,24 @@ describe("API", () => {
             : currentValue.run_attempt;
         }, 0);
 
-      const workflowRuns = await getWorkflowRuns(0);
+      const getWorkflowRunsPromise = getWorkflowRuns(0);
 
+      // Behaviour
+      await expect(getWorkflowRunsPromise).resolves.not.toThrow();
+      const workflowRuns = await getWorkflowRunsPromise;
       expect(workflowRuns[0]?.attempt).toStrictEqual(runAttempt);
+      expect(listWorkflowRunsSpy).toHaveBeenCalledOnce();
+
+      // Logging
+      assertOnlyCalled(coreDebugLogMock);
+      expect(coreDebugLogMock).toHaveBeenCalledOnce();
+      expect(coreDebugLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+        "Fetched Workflow Runs:
+          Repository: rich-clown/circus
+          Workflow ID: 0
+          Triggering SHA: 1234567890123456789012345678901234567890
+          Runs Fetched: [9 (Attempt 3), 7 (Attempt 2), 9 (Attempt 2), 4 (Attempt 1), 1 (Attempt 0)]"
+      `);
     });
 
     it("should return the runs in attempt order", async () => {
@@ -433,8 +620,11 @@ describe("API", () => {
           return 0;
         });
 
-      const workflowRuns = await getWorkflowRuns(0);
+      const getWorkflowRunsPromise = getWorkflowRuns(0);
 
+      // Behaviour
+      await expect(getWorkflowRunsPromise).resolves.not.toThrow();
+      const workflowRuns = await getWorkflowRunsPromise;
       expect(workflowRuns).toHaveLength(runAttempts.length);
       runAttempts.forEach((attempt, i) => {
         const workflowRun = workflowRuns[i];
@@ -443,97 +633,256 @@ describe("API", () => {
         expect(workflowRun?.id).toStrictEqual(attempt.id);
         expect(workflowRun?.status).toStrictEqual(attempt.status);
       });
+      expect(listWorkflowRunsSpy).toHaveBeenCalledOnce();
+
+      // Logging
+      assertOnlyCalled(coreDebugLogMock);
+      expect(coreDebugLogMock).toHaveBeenCalledOnce();
+      expect(coreDebugLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+        "Fetched Workflow Runs:
+          Repository: rich-clown/circus
+          Workflow ID: 0
+          Triggering SHA: 1234567890123456789012345678901234567890
+          Runs Fetched: [9 (Attempt 3), 7 (Attempt 2), 9 (Attempt 2), 4 (Attempt 1), 1 (Attempt 0)]"
+      `);
     });
 
     it("should return runs in the correct shape", async () => {
-      const workflowRun = (await getWorkflowRuns(0))[0];
+      const getWorkflowRunsPromise = getWorkflowRuns(0);
 
+      // Behaviour
+      await expect(getWorkflowRunsPromise).resolves.not.toThrow();
+      const workflowRun = (await getWorkflowRunsPromise)[0];
       expect(typeof workflowRun?.attempt).toStrictEqual("number");
       expect(typeof workflowRun?.checkSuiteId).toStrictEqual("number");
       expect(typeof workflowRun?.id).toStrictEqual("number");
       expect(typeof workflowRun?.status).toStrictEqual("string");
+      expect(listWorkflowRunsSpy).toHaveBeenCalledOnce();
+
+      // Logging
+      assertOnlyCalled(coreDebugLogMock);
+      expect(coreDebugLogMock).toHaveBeenCalledOnce();
+      expect(coreDebugLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+         "Fetched Workflow Runs:
+           Repository: rich-clown/circus
+           Workflow ID: 0
+           Triggering SHA: 1234567890123456789012345678901234567890
+           Runs Fetched: [9 (Attempt 3), 7 (Attempt 2), 9 (Attempt 2), 4 (Attempt 1), 1 (Attempt 0)]"
+       `);
     });
 
     it("should not try to use the branch name by default", async () => {
-      const workflowRun = (await getWorkflowRuns(0))[0];
-      const requestObj = listWorkflowRunsSpy.mock.calls[0]?.[0];
+      const getWorkflowRunsPromise = getWorkflowRuns(0);
 
+      // Behaviour
+      await expect(getWorkflowRunsPromise).resolves.not.toThrow();
+      const workflowRun = (await getWorkflowRunsPromise)[0];
+      expect(listWorkflowRunsSpy).toHaveBeenCalledOnce();
+      const requestObj = listWorkflowRunsSpy.mock.calls[0]?.[0];
       expect(workflowRun).toBeDefined();
       expect(requestObj.branch).toBeUndefined();
+
+      // Logging
+      assertOnlyCalled(coreDebugLogMock);
+      expect(coreDebugLogMock).toHaveBeenCalledOnce();
+      expect(coreDebugLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+        "Fetched Workflow Runs:
+          Repository: rich-clown/circus
+          Workflow ID: 0
+          Triggering SHA: 1234567890123456789012345678901234567890
+          Runs Fetched: [9 (Attempt 3), 7 (Attempt 2), 9 (Attempt 2), 4 (Attempt 1), 1 (Attempt 0)]"
+      `);
     });
 
     it("should use the branch name for the request if tryBranchName is true", async () => {
-      const workflowRun = (await getWorkflowRuns(0, true))[0];
-      const requestObj = listWorkflowRunsSpy.mock.calls[0]?.[0];
+      const getWorkflowRunsPromise = getWorkflowRuns(0, true);
 
+      // Behaviour
+      await expect(getWorkflowRunsPromise).resolves.not.toThrow();
+      const workflowRun = (await getWorkflowRunsPromise)[0];
+      expect(listWorkflowRunsSpy).toHaveBeenCalledOnce();
+      const requestObj = listWorkflowRunsSpy.mock.calls[0]?.[0];
       expect(workflowRun).toBeDefined();
       expect(requestObj.branch).toStrictEqual(mockBranchName);
+
+      // Logging
+      assertOnlyCalled(coreDebugLogMock);
+      expect(coreDebugLogMock).toHaveBeenCalledTimes(2);
+      expect(coreDebugLogMock.mock.calls[0]?.[0]).toMatchInlineSnapshot(
+        `"getWorkflowRunIds: Filtered branch name: refs/heads/lanayru"`,
+      );
+      expect(coreDebugLogMock.mock.calls[1]?.[0]).toMatchInlineSnapshot(`
+        "Fetched Workflow Runs:
+          Repository: rich-clown/circus
+          Workflow ID: 0
+          Triggering SHA: 1234567890123456789012345678901234567890
+          Runs Fetched: [9 (Attempt 3), 7 (Attempt 2), 9 (Attempt 2), 4 (Attempt 1), 1 (Attempt 0)]"
+      `);
     });
 
     it("should use the created field if the branch name is not being used", async () => {
-      const workflowRun = (await getWorkflowRuns(0))[0];
-      const requestObj = listWorkflowRunsSpy.mock.calls[0]?.[0];
+      const getWorkflowRunsPromise = getWorkflowRuns(0);
 
+      // Behaviour
+      await expect(getWorkflowRunsPromise).resolves.not.toThrow();
+      const workflowRun = (await getWorkflowRunsPromise)[0];
+      expect(listWorkflowRunsSpy).toHaveBeenCalledOnce();
+      const requestObj = listWorkflowRunsSpy.mock.calls[0]?.[0];
       expect(workflowRun).toBeDefined();
       expect(requestObj.created).toBeDefined();
       expect(typeof requestObj.created).toStrictEqual("string");
-      expect(requestObj.created !== "").toBeTruthy();
+      expect(requestObj.created).not.toStrictEqual("");
+
+      // Logging
+      assertOnlyCalled(coreDebugLogMock);
+      expect(coreDebugLogMock).toHaveBeenCalledOnce();
+      expect(coreDebugLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+        "Fetched Workflow Runs:
+          Repository: rich-clown/circus
+          Workflow ID: 0
+          Triggering SHA: 1234567890123456789012345678901234567890
+          Runs Fetched: [9 (Attempt 3), 7 (Attempt 2), 9 (Attempt 2), 4 (Attempt 1), 1 (Attempt 0)]"
+      `);
     });
 
     it("should exclude the created field if the branch name is being used", async () => {
-      const workflowRun = (await getWorkflowRuns(0, true))[0];
-      const requestObj = listWorkflowRunsSpy.mock.calls[0]?.[0];
+      const getWorkflowRunsPromise = getWorkflowRuns(0, true);
 
+      // Behaviour
+      await expect(getWorkflowRunsPromise).resolves.not.toThrow();
+      const workflowRun = (await getWorkflowRunsPromise)[0];
+      expect(listWorkflowRunsSpy).toHaveBeenCalledOnce();
+      const requestObj = listWorkflowRunsSpy.mock.calls[0]?.[0];
       expect(workflowRun).toBeDefined();
       expect(requestObj.created).toBeUndefined();
+
+      // Logging
+      assertOnlyCalled(coreDebugLogMock);
+      expect(coreDebugLogMock).toHaveBeenCalledTimes(2);
+      expect(coreDebugLogMock.mock.calls[0]?.[0]).toMatchInlineSnapshot(
+        `"getWorkflowRunIds: Filtered branch name: refs/heads/lanayru"`,
+      );
+      expect(coreDebugLogMock.mock.calls[1]?.[0]).toMatchInlineSnapshot(`
+        "Fetched Workflow Runs:
+          Repository: rich-clown/circus
+          Workflow ID: 0
+          Triggering SHA: 1234567890123456789012345678901234567890
+          Runs Fetched: [9 (Attempt 3), 7 (Attempt 2), 9 (Attempt 2), 4 (Attempt 1), 1 (Attempt 0)]"
+      `);
     });
 
     it("should return no runs if there are no sha matches", async () => {
       mockContextProp("sha", "ganon");
 
-      const workflowRuns = await getWorkflowRuns(0);
+      const getWorkflowRunsPromise = getWorkflowRuns(0);
 
+      // Behaviour
+      await expect(getWorkflowRunsPromise).resolves.not.toThrow();
+      const workflowRuns = await getWorkflowRunsPromise;
       expect(workflowRuns).toHaveLength(0);
+      expect(listWorkflowRunsSpy).toHaveBeenCalledOnce();
+
+      // Logging
+      assertOnlyCalled(coreDebugLogMock);
+      expect(coreDebugLogMock).toHaveBeenCalledOnce();
+      expect(coreDebugLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+        "Fetched Workflow Runs:
+          Repository: rich-clown/circus
+          Workflow ID: 0
+          Triggering SHA: ganon
+          Runs Fetched: []"
+      `);
     });
 
     it("should throw if a non-200 status is returned", async () => {
       listWorkflowRunsSpy.mockRestore();
       const errorStatus = 401;
-      vi.spyOn(mockOctokit.rest.actions, "listWorkflowRuns").mockReturnValue(
-        Promise.resolve({
-          data: undefined,
-          status: errorStatus,
-        }),
-      );
+      listWorkflowRunsSpy = vi
+        .spyOn(mockOctokit.rest.actions, "listWorkflowRuns")
+        .mockReturnValue(
+          Promise.resolve({
+            data: undefined,
+            status: errorStatus,
+          }),
+        );
 
-      await expect(getWorkflowRuns(0)).rejects.toThrow(
+      const getWorkflowRunsPromise = getWorkflowRuns(0);
+
+      // Behaviour
+      await expect(getWorkflowRunsPromise).rejects.toThrow(
         `Failed to get Workflow runs, expected 200 but received ${errorStatus}`,
       );
+      expect(listWorkflowRunsSpy).toHaveBeenCalledOnce();
+
+      // Logging
+      assertOnlyCalled(coreErrorLogMock, coreDebugLogMock);
+      expect(coreErrorLogMock).toHaveBeenCalledOnce();
+      expect(coreErrorLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(
+        `"getWorkflowRuns: An unexpected error has occurred: Failed to get Workflow runs, expected 200 but received 401"`,
+      );
+      expect(coreDebugLogMock).toHaveBeenCalledOnce();
     });
 
     it("should return an empty array if there are no runs", async () => {
       listWorkflowRunsSpy.mockRestore();
 
-      vi.spyOn(mockOctokit.rest.actions, "listWorkflowRuns").mockReturnValue(
-        Promise.resolve({
-          data: {
-            total_count: 0,
-            workflow_runs: [],
-          },
-          status: 200,
-        }),
-      );
+      listWorkflowRunsSpy = vi
+        .spyOn(mockOctokit.rest.actions, "listWorkflowRuns")
+        .mockReturnValue(
+          Promise.resolve({
+            data: {
+              total_count: 0,
+              workflow_runs: [],
+            },
+            status: 200,
+          }),
+        );
 
-      expect(await getWorkflowRuns(0)).toStrictEqual([]);
+      const getWorkflowRunsPromise = getWorkflowRuns(0);
+
+      // Behaviour
+      const runs = await getWorkflowRunsPromise;
+      expect(runs).toStrictEqual([]);
+      expect(listWorkflowRunsSpy).toHaveBeenCalledOnce();
+
+      // Logging
+      assertOnlyCalled(coreDebugLogMock);
+      expect(coreDebugLogMock).toHaveBeenCalledOnce();
+      expect(coreDebugLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+        "Fetched Workflow Runs:
+          Repository: rich-clown/circus
+          Workflow ID: 0
+          Triggering SHA: 1234567890123456789012345678901234567890
+          Runs Fetched: []"
+      `);
     });
 
     it("should not use the branch field if the ref is for a tag", async () => {
       mockContextProp("ref", "/refs/tags/1.5.0");
-      const workflowRun = (await getWorkflowRuns(0, true))[0];
-      const requestObj = listWorkflowRunsSpy.mock.calls[0]?.[0];
 
+      const getWorkflowRunsPromise = getWorkflowRuns(0, true);
+
+      // Behaviour
+      await expect(getWorkflowRunsPromise).resolves.not.toThrow();
+      const workflowRun = (await getWorkflowRunsPromise)[0];
+      expect(listWorkflowRunsSpy).toHaveBeenCalledOnce();
+      const requestObj = listWorkflowRunsSpy.mock.calls[0]?.[0];
       expect(workflowRun).toBeDefined();
       expect(requestObj.branch).toBeUndefined();
+
+      // Logging
+      assertOnlyCalled(coreDebugLogMock);
+      expect(coreDebugLogMock).toHaveBeenCalledTimes(2);
+      expect(coreDebugLogMock.mock.calls[0]?.[0]).toMatchInlineSnapshot(
+        `"Unable to filter branch, unsupported ref: /refs/tags/1.5.0"`,
+      );
+      expect(coreDebugLogMock.mock.calls[1]?.[0]).toMatchInlineSnapshot(`
+        "Fetched Workflow Runs:
+          Repository: rich-clown/circus
+          Workflow ID: 0
+          Triggering SHA: 1234567890123456789012345678901234567890
+          Runs Fetched: [9 (Attempt 3), 7 (Attempt 2), 9 (Attempt 2), 4 (Attempt 1), 1 (Attempt 0)]"
+      `);
     });
   });
 
@@ -556,7 +905,18 @@ describe("API", () => {
       );
       const runID = await getCheckId(0, "ganon");
 
+      // Behaviour
       expect(runID).toStrictEqual(123456);
+
+      // Logging
+      assertOnlyCalled(coreDebugLogMock);
+      expect(coreDebugLogMock).toHaveBeenCalledTimes(1);
+      expect(coreDebugLogMock.mock.calls[0]?.[0]).toMatchInlineSnapshot(`
+        "Fetched Checks:
+          Repository: rich-clown/circus
+          Total Checks: 1
+          Checks: [ganon (123456)]"
+      `);
     });
 
     it("should throw an error if it cannot locate the requested check name", async () => {
@@ -576,9 +936,26 @@ describe("API", () => {
         }),
       );
 
-      await expect(() => getCheckId(0, "link")).rejects.toThrowError(
+      const getCheckIdPromise = getCheckId(0, "link");
+
+      // Behaviour
+      await expect(getCheckIdPromise).rejects.toThrowError(
         "Failed to get Check ID for 'link', available checks: [ganon (123456)]",
       );
+
+      // Logging
+      assertOnlyCalled(coreErrorLogMock, coreDebugLogMock);
+      expect(coreErrorLogMock).toHaveBeenCalledOnce();
+      expect(coreErrorLogMock.mock.calls[0]?.[0]).toMatchInlineSnapshot(
+        `"getCheckId: An unexpected error has occurred: Failed to get Check ID for 'link', available checks: [ganon (123456)]"`,
+      );
+      expect(coreDebugLogMock).toHaveBeenCalledTimes(2);
+      expect(coreDebugLogMock.mock.calls[0]?.[0]).toMatchInlineSnapshot(`
+        "Fetched Checks:
+          Repository: rich-clown/circus
+          Total Checks: 1
+          Checks: [ganon (123456)]"
+      `);
     });
 
     it("should throw if a non-200 status is returned", async () => {
@@ -590,17 +967,39 @@ describe("API", () => {
         }),
       );
 
-      await expect(getCheckId(0, "")).rejects.toThrow(
+      const getCheckIdPromise = getCheckId(0, "");
+
+      // Behaviour
+      await expect(getCheckIdPromise).rejects.toThrow(
         `Failed to get Checks, expected 200 but received ${errorStatus}`,
       );
+
+      // Logging
+      assertOnlyCalled(coreErrorLogMock, coreDebugLogMock);
+      expect(coreErrorLogMock).toHaveBeenCalledOnce();
+      expect(coreErrorLogMock.mock.calls[0]?.[0]).toMatchInlineSnapshot(
+        `"getCheckId: An unexpected error has occurred: Failed to get Checks, expected 200 but received 401"`,
+      );
+      expect(coreDebugLogMock).toHaveBeenCalledOnce();
     });
   });
 
   describe("getRunState", () => {
     it("should throw if an unknown run type is specified", async () => {
-      await expect(() =>
-        getRunState(123456, -1 as RunType),
-      ).rejects.toThrowError("Unknown run type specified");
+      const getRunStatePromise = getRunState(123456, -1 as RunType);
+
+      // Behaviour
+      await expect(getRunStatePromise).rejects.toThrowError(
+        "Unknown run type specified",
+      );
+
+      // Logging
+      assertOnlyCalled(coreErrorLogMock, coreDebugLogMock);
+      expect(coreErrorLogMock).toHaveBeenCalledOnce();
+      expect(coreErrorLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(
+        `"getRunState: An unexpected error has occurred: Unknown run type specified"`,
+      );
+      expect(coreDebugLogMock).toHaveBeenCalledOnce();
     });
 
     describe("workflow", () => {
@@ -616,9 +1015,25 @@ describe("API", () => {
           }),
         );
 
-        const state = await getRunState(123456, RunType.WorkflowRun);
+        const getRunStatePromise = getRunState(123456, RunType.WorkflowRun);
+
+        // Behaviour
+        await expect(getRunStatePromise).resolves.not.toThrow();
+        const state = await getRunStatePromise;
         expect(state.conclusion).toStrictEqual(mockData.conclusion);
         expect(state.status).toStrictEqual(mockData.status);
+
+        // Logging
+        assertOnlyCalled(coreDebugLogMock);
+        expect(coreDebugLogMock).toHaveBeenCalledOnce();
+        expect(coreDebugLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+          "Fetched Run:
+            Repository: rich-clown/circus
+            Run ID: 123456
+            Run Type: Workflow
+            Status: completed
+            Conclusion: cancelled"
+        `);
       });
 
       it("should throw if a non-200 status is returned", async () => {
@@ -630,9 +1045,20 @@ describe("API", () => {
           }),
         );
 
-        await expect(getRunState(0, RunType.WorkflowRun)).rejects.toThrow(
+        const getRunStatePromise = getRunState(0, RunType.WorkflowRun);
+
+        // Behaviour
+        await expect(getRunStatePromise).rejects.toThrow(
           `Failed to get run state, expected 200 but received ${errorStatus}`,
         );
+
+        // Logging
+        assertOnlyCalled(coreErrorLogMock, coreDebugLogMock);
+        expect(coreErrorLogMock).toHaveBeenCalledOnce();
+        expect(coreErrorLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(
+          `"getRunState: An unexpected error has occurred: Failed to get run state, expected 200 but received 401"`,
+        );
+        expect(coreDebugLogMock).toHaveBeenCalledOnce();
       });
     });
 
@@ -649,9 +1075,25 @@ describe("API", () => {
           }),
         );
 
-        const state = await getRunState(123456, RunType.WorkflowRun);
+        const getRunStatePromise = getRunState(123456, RunType.WorkflowRun);
+
+        // Behaviour
+        await expect(getRunStatePromise).resolves.not.toThrow();
+        const state = await getRunStatePromise;
         expect(state.conclusion).toStrictEqual(mockData.conclusion);
         expect(state.status).toStrictEqual(mockData.status);
+
+        // Logging
+        assertOnlyCalled(coreDebugLogMock);
+        expect(coreDebugLogMock).toHaveBeenCalledOnce();
+        expect(coreDebugLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+          "Fetched Run:
+            Repository: rich-clown/circus
+            Run ID: 123456
+            Run Type: Workflow
+            Status: completed
+            Conclusion: cancelled"
+        `);
       });
 
       it("should throw if a non-200 status is returned", async () => {
@@ -663,9 +1105,20 @@ describe("API", () => {
           }),
         );
 
-        await expect(getRunState(0, RunType.WorkflowRun)).rejects.toThrow(
+        const getRunStatePromise = getRunState(0, RunType.WorkflowRun);
+
+        // Behaviour
+        await expect(getRunStatePromise).rejects.toThrow(
           `Failed to get run state, expected 200 but received ${errorStatus}`,
         );
+
+        // Logging
+        assertOnlyCalled(coreErrorLogMock, coreDebugLogMock);
+        expect(coreErrorLogMock).toHaveBeenCalledOnce();
+        expect(coreErrorLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(
+          `"getRunState: An unexpected error has occurred: Failed to get run state, expected 200 but received 401"`,
+        );
+        expect(coreDebugLogMock).toHaveBeenCalledOnce();
       });
     });
   });
@@ -684,14 +1137,23 @@ describe("API", () => {
           }),
         );
 
-        const runStatus = await getRunStatus(0, RunType.WorkflowRun);
+        const getRunStatusPromise = getRunStatus(0, RunType.WorkflowRun);
 
-        expect(runStatus.completed).toBeTruthy();
+        // Behaviour
+        await expect(getRunStatusPromise).resolves.not.toThrow();
+        const runStatus = await getRunStatusPromise;
+        expect(runStatus.completed).toStrictEqual(true);
         if (runStatus.completed) {
           expect(runStatus.conclusion).toStrictEqual(RunConclusion.Cancelled);
-        } else {
-          throw new Error("should be completed");
         }
+
+        // Logging
+        assertOnlyCalled(coreErrorLogMock, coreDebugLogMock);
+        expect(coreErrorLogMock).toHaveBeenCalledOnce();
+        expect(coreErrorLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(
+          `"Run has failed with conclusion: cancelled"`,
+        );
+        expect(coreDebugLogMock).toHaveBeenCalledOnce();
       });
 
       it("should not set a failure status if the conclusion is a success", async () => {
@@ -709,9 +1171,23 @@ describe("API", () => {
           .spyOn(core, "setFailed")
           .mockImplementation(() => undefined);
 
-        await getRunStatus(0, RunType.WorkflowRun);
+        const getRunStatusPromise = getRunStatus(0, RunType.WorkflowRun);
 
+        // Behaviour
+        await expect(getRunStatusPromise).resolves.not.toThrow();
         expect(coreSetFailedSpy).not.toBeCalled();
+
+        // Logging
+        assertOnlyCalled(coreDebugLogMock);
+        expect(coreDebugLogMock).toHaveBeenCalledOnce();
+        expect(coreDebugLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+          "Fetched Run:
+            Repository: rich-clown/circus
+            Run ID: 0
+            Run Type: Workflow
+            Status: completed
+            Conclusion: success"
+        `);
       });
 
       it("should set the status to non-success when the conclusion is not a success", async () => {
@@ -729,11 +1205,20 @@ describe("API", () => {
           .spyOn(core, "setFailed")
           .mockImplementation(() => undefined);
 
-        await getRunStatus(0, RunType.WorkflowRun);
-
+        // Behaviour
+        const getRunStatusPromise = getRunStatus(0, RunType.WorkflowRun);
+        await expect(getRunStatusPromise).resolves.not.toThrow();
         expect(coreSetFailedSpy.mock.calls[0]?.[0]).toStrictEqual(
           RunConclusion.Failure,
         );
+
+        // Logging
+        assertOnlyCalled(coreErrorLogMock, coreDebugLogMock);
+        expect(coreErrorLogMock).toHaveBeenCalledOnce();
+        expect(coreErrorLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(
+          `"Run has failed with conclusion: failure"`,
+        );
+        expect(coreDebugLogMock).toHaveBeenCalledOnce();
       });
 
       it("should set the status to non-success when the conclusion is unknown", async () => {
@@ -752,11 +1237,25 @@ describe("API", () => {
           .spyOn(core, "setFailed")
           .mockImplementation(() => undefined);
 
-        await getRunStatus(0, RunType.WorkflowRun);
+        const getRunStatusPromise = getRunStatus(0, RunType.WorkflowRun);
 
+        // Behaviour
+        await expect(getRunStatusPromise).resolves.not.toThrow();
         expect(coreSetFailedSpy.mock.calls[0]?.[0]).toStrictEqual(
           `Unknown conclusion: ${unknownStatus}`,
         );
+
+        // Logging
+        assertOnlyCalled(coreDebugLogMock);
+        expect(coreDebugLogMock).toHaveBeenCalledOnce();
+        expect(coreDebugLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+          "Fetched Run:
+            Repository: rich-clown/circus
+            Run ID: 0
+            Run Type: Workflow
+            Status: completed
+            Conclusion: Clown Car?"
+        `);
       });
 
       it("should return with completed set to false when not completed", async () => {
@@ -770,12 +1269,23 @@ describe("API", () => {
           }),
         );
 
-        const runStatus = await getRunStatus(0, RunType.WorkflowRun);
+        const getRunStatusPromise = getRunStatus(0, RunType.WorkflowRun);
 
-        expect(runStatus.completed).toBeFalsy();
-        if (runStatus.completed) {
-          throw new Error("should be not be completed");
-        }
+        // Behaviour
+        const runStatus = await getRunStatusPromise;
+        expect(runStatus.completed).toStrictEqual(false);
+
+        // Logging
+        assertOnlyCalled(coreDebugLogMock);
+        expect(coreDebugLogMock).toHaveBeenCalledOnce();
+        expect(coreDebugLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+          "Fetched Run:
+            Repository: rich-clown/circus
+            Run ID: 0
+            Run Type: Workflow
+            Status: queued
+            Conclusion: undefined"
+        `);
       });
     });
 
@@ -792,14 +1302,24 @@ describe("API", () => {
           }),
         );
 
-        const runStatus = await getRunStatus(0, RunType.CheckRun);
+        const getRunStatusPromise = getRunStatus(0, RunType.CheckRun);
 
-        expect(runStatus.completed).toBeTruthy();
+        // Behaviour
+        const runStatus = await getRunStatusPromise;
+        expect(runStatus.completed).toStrictEqual(true);
         if (runStatus.completed) {
           expect(runStatus.conclusion).toStrictEqual(RunConclusion.Cancelled);
         } else {
           throw new Error("should be completed");
         }
+
+        // Logging
+        assertOnlyCalled(coreErrorLogMock, coreDebugLogMock);
+        expect(coreErrorLogMock).toHaveBeenCalledOnce();
+        expect(coreErrorLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(
+          `"Run has failed with conclusion: cancelled"`,
+        );
+        expect(coreDebugLogMock).toHaveBeenCalledOnce();
       });
 
       it("should not set a failure status if the conclusion is a success", async () => {
@@ -817,9 +1337,23 @@ describe("API", () => {
           .spyOn(core, "setFailed")
           .mockImplementation(() => undefined);
 
-        await getRunStatus(0, RunType.CheckRun);
+        const getRunStatusPromise = getRunStatus(0, RunType.CheckRun);
 
+        // Behaviour
+        await expect(getRunStatusPromise).resolves.not.toThrow();
         expect(coreSetFailedSpy).not.toBeCalled();
+
+        // Logging
+        assertOnlyCalled(coreDebugLogMock);
+        expect(coreDebugLogMock).toHaveBeenCalledOnce();
+        expect(coreDebugLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+          "Fetched Run:
+            Repository: rich-clown/circus
+            Run ID: 0
+            Run Type: Check
+            Status: completed
+            Conclusion: success"
+        `);
       });
 
       it("should set the status to non-success when the conclusion is not a success", async () => {
@@ -837,11 +1371,21 @@ describe("API", () => {
           .spyOn(core, "setFailed")
           .mockImplementation(() => undefined);
 
-        await getRunStatus(0, RunType.CheckRun);
+        const getRunStatusPromise = getRunStatus(0, RunType.CheckRun);
 
+        // Behaviour
+        await expect(getRunStatusPromise).resolves.not.toThrow();
         expect(coreSetFailedSpy.mock.calls[0]?.[0]).toStrictEqual(
           RunConclusion.Failure,
         );
+
+        // Logging
+        assertOnlyCalled(coreErrorLogMock, coreDebugLogMock);
+        expect(coreErrorLogMock).toHaveBeenCalledOnce();
+        expect(coreErrorLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(
+          `"Run has failed with conclusion: failure"`,
+        );
+        expect(coreDebugLogMock).toHaveBeenCalledOnce();
       });
 
       it("should set the status to non-success when the conclusion is unknown", async () => {
@@ -860,11 +1404,25 @@ describe("API", () => {
           .spyOn(core, "setFailed")
           .mockImplementation(() => undefined);
 
-        await getRunStatus(0, RunType.CheckRun);
+        const getRunStatusPromise = getRunStatus(0, RunType.CheckRun);
 
+        // Behaviour
+        await expect(getRunStatusPromise).resolves.not.toThrow();
         expect(coreSetFailedSpy.mock.calls[0]?.[0]).toStrictEqual(
           `Unknown conclusion: ${unknownStatus}`,
         );
+
+        // Logging
+        assertOnlyCalled(coreDebugLogMock);
+        expect(coreDebugLogMock).toHaveBeenCalledOnce();
+        expect(coreDebugLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+          "Fetched Run:
+            Repository: rich-clown/circus
+            Run ID: 0
+            Run Type: Check
+            Status: completed
+            Conclusion: Clown Car?"
+        `);
       });
 
       it("should return with completed set to false when not completed", async () => {
@@ -878,12 +1436,24 @@ describe("API", () => {
           }),
         );
 
-        const runStatus = await getRunStatus(0, RunType.CheckRun);
+        const getRunStatusPromise = getRunStatus(0, RunType.CheckRun);
 
-        expect(runStatus.completed).toBeFalsy();
-        if (runStatus.completed) {
-          throw new Error("should be not be completed");
-        }
+        // Behaviour
+        await expect(getRunStatusPromise).resolves.not.toThrow();
+        const runStatus = await getRunStatusPromise;
+        expect(runStatus.completed).toStrictEqual(false);
+
+        // Logging
+        assertOnlyCalled(coreDebugLogMock);
+        expect(coreDebugLogMock).toHaveBeenCalledOnce();
+        expect(coreDebugLogMock.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+          "Fetched Run:
+            Repository: rich-clown/circus
+            Run ID: 0
+            Run Type: Check
+            Status: queued
+            Conclusion: undefined"
+        `);
       });
     });
   });
