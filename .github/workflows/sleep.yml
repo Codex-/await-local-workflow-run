@@ -9,12 +9,12 @@ jobs:
   short:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Sleep for 1 minute
         run: sleep 60
   long:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Sleep for 3 minutes
         run: sleep 180
