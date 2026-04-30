@@ -52,4 +52,4 @@ jobs:
       - uses: actions/checkout@v6
       - uses: jdx/mise-action@v3
       - run: pnpm i
-      - uses: codex-/knip-reporter@v2
+      - uses: codex-/knip-reporter@v3
